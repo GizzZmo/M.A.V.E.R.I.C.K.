@@ -1,0 +1,123 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to create release for'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build application
+        run: npm run build
+      
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "VERSION=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create release archives
+        run: |
+          # Create tar.gz archive
+          cd dist
+          tar -czf ../maverick-${{ steps.get_version.outputs.VERSION }}.tar.gz .
+          cd ..
+          
+          # Create zip archive
+          zip -r maverick-${{ steps.get_version.outputs.VERSION }}.zip dist/
+          
+          # Create checksums
+          sha256sum maverick-${{ steps.get_version.outputs.VERSION }}.tar.gz > checksums.txt
+          sha256sum maverick-${{ steps.get_version.outputs.VERSION }}.zip >> checksums.txt
+      
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 ${{ steps.get_version.outputs.VERSION }}^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            echo "CHANGELOG=Initial release" >> $GITHUB_OUTPUT
+          else
+            echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+            git log $PREV_TAG..${{ steps.get_version.outputs.VERSION }} --pretty=format:"- %s (%h)" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## M.A.V.E.R.I.C.K. ${{ steps.get_version.outputs.VERSION }}
+            
+            ### What's Changed
+            ${{ steps.changelog.outputs.CHANGELOG }}
+            
+            ### Installation
+            
+            Download one of the assets below and extract it to your preferred location.
+            
+            **Quick Start:**
+            ```bash
+            # Extract the archive
+            tar -xzf maverick-${{ steps.get_version.outputs.VERSION }}.tar.gz
+            # or
+            unzip maverick-${{ steps.get_version.outputs.VERSION }}.zip
+            
+            # Serve the application
+            npx serve dist
+            ```
+            
+            ### Checksums
+            See `checksums.txt` for SHA256 checksums of all release assets.
+          files: |
+            maverick-${{ steps.get_version.outputs.VERSION }}.tar.gz
+            maverick-${{ steps.get_version.outputs.VERSION }}.zip
+            checksums.txt
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload artifacts to workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets-${{ steps.get_version.outputs.VERSION }}
+          path: |
+            maverick-${{ steps.get_version.outputs.VERSION }}.tar.gz
+            maverick-${{ steps.get_version.outputs.VERSION }}.zip
+            checksums.txt
+          retention-days: 90
