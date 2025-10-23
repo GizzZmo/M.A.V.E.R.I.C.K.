@@ -1,352 +1,542 @@
-<div class="min-h-screen w-full p-4 sm:p-6 lg:p-8 flex flex-col font-mono">
-  <!-- Header -->
-  <header class="mb-6 flex items-center justify-between border-b-2 border-sky-500/30 pb-4">
-    <div>
-      <h1 class="text-2xl sm:text-3xl font-bold text-sky-400 tracking-wider">
-        M.A.V.E.R.I.C.K.
-      </h1>
-      <p class="text-sm text-slate-400">Marvel Animated Verse & Entity Resource for Ideation & Creative Kickstart</p>
-    </div>
-  </header>
-
-  <main class="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-8">
-    <!-- Left Panel: Controls -->
-    <div class="flex flex-col bg-slate-800/50 rounded-lg border border-slate-700 p-6 backdrop-blur-sm">
-      <div class="flex border-b border-slate-700 mb-6 flex-wrap">
-        <button (click)="setActiveTab('character')"
-          [class]="'px-4 py-2 -mb-px text-sm font-semibold border-b-2 transition-colors duration-200 ' + (activeTab() === 'character' ? 'text-sky-400 border-sky-400' : 'text-slate-400 border-transparent hover:text-sky-300')">
-          CHARACTER
-        </button>
-        <button (click)="setActiveTab('plot')"
-          [class]="'px-4 py-2 -mb-px text-sm font-semibold border-b-2 transition-colors duration-200 ' + (activeTab() === 'plot' ? 'text-sky-400 border-sky-400' : 'text-slate-400 border-transparent hover:text-sky-300')">
-          PLOT
-        </button>
-        <button (click)="setActiveTab('style')"
-          [class]="'px-4 py-2 -mb-px text-sm font-semibold border-b-2 transition-colors duration-200 ' + (activeTab() === 'style' ? 'text-sky-400 border-sky-400' : 'text-slate-400 border-transparent hover:text-sky-300')">
-          VISUAL STYLE
-        </button>
-        <button (click)="setActiveTab('concept-art')"
-          [class]="'px-4 py-2 -mb-px text-sm font-semibold border-b-2 transition-colors duration-200 ' + (activeTab() === 'concept-art' ? 'text-sky-400 border-sky-400' : 'text-slate-400 border-transparent hover:text-sky-300')">
-          CONCEPT ART
-        </button>
-        <button (click)="setActiveTab('comic-strip')"
-          [class]="'px-4 py-2 -mb-px text-sm font-semibold border-b-2 transition-colors duration-200 ' + (activeTab() === 'comic-strip' ? 'text-sky-400 border-sky-400' : 'text-slate-400 border-transparent hover:text-sky-300')">
-          COMIC STRIP
-        </button>
+<div class="h-screen w-full font-mono flex flex-col">
+  <div class="p-4 sm:p-6 lg:p-8 flex flex-col flex-grow min-h-0 animate-fade-in">
+    <!-- Header -->
+    <header class="mb-6 flex items-center justify-between border-b-2 border-sky-500/30 pb-4">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-bold text-sky-400 tracking-wider">
+          M.A.V.E.R.I.C.K.
+        </h1>
+        <p class="text-sm text-slate-400">Marvel Animated Verse & Entity Resource for Ideation & Creative Kickstart</p>
       </div>
+    </header>
 
-      <!-- Generator Forms -->
-      <div class="flex-grow">
-        @switch (activeTab()) {
-          @case ('character') {
-            <div class="flex flex-col h-full">
-              <label for="char-prompt" class="text-slate-300 mb-2 font-semibold">Character Concept Prompt</label>
-              <textarea id="char-prompt" rows="5" [value]="characterInput()" (input)="updateCharacterInput($event)"
-                class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 placeholder-slate-500"></textarea>
-              <p class="text-xs text-slate-500 mt-2">Describe the core idea for a new hero or villain.</p>
-            </div>
+    <main class="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-0">
+      <!-- Left Panel: Controls -->
+      <div class="flex flex-col bg-slate-800/50 rounded-lg border border-slate-700 p-6 backdrop-blur-sm overflow-y-auto">
+        <div class="flex border-b border-slate-700 mb-6 flex-wrap">
+          <button (click)="setActiveTab(AppTab.Character)" [class]="getTabClasses(AppTab.Character)">
+            CHARACTER
+          </button>
+          <button (click)="setActiveTab(AppTab.Plot)" [class]="getTabClasses(AppTab.Plot)">
+            PLOT
+          </button>
+          <button (click)="setActiveTab(AppTab.Style)" [class]="getTabClasses(AppTab.Style)">
+            VISUAL STYLE
+          </button>
+          <button (click)="setActiveTab(AppTab.Intel)" [class]="getTabClasses(AppTab.Intel)">
+            INTEL
+          </button>
+          <button (click)="setActiveTab(AppTab.ConceptArt)" [class]="getTabClasses(AppTab.ConceptArt)">
+            CONCEPT ART
+          </button>
+          <button (click)="setActiveTab(AppTab.ComicStrip)" [class]="getTabClasses(AppTab.ComicStrip)">
+            COMIC STRIP
+          </button>
+          <button (click)="setActiveTab(AppTab.VideoShot)" [class]="getTabClasses(AppTab.VideoShot)">
+            VIDEO SHOT
+          </button>
+        </div>
+
+        <!-- Generator Forms -->
+        <div class="flex-grow">
+          @switch (activeTab()) {
+          @case (AppTab.Character) {
+          <div class="flex flex-col h-full">
+            <label for="char-prompt" class="text-slate-300 mb-2 font-semibold">Character Concept Prompt</label>
+            <textarea id="char-prompt" rows="5" [value]="characterInput()" (input)="updateCharacterInput($event)"
+              aria-describedby="char-prompt-desc"
+              class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 placeholder-slate-500"></textarea>
+            <p id="char-prompt-desc" class="text-xs text-slate-500 mt-2">Describe the core idea for a new hero or
+              villain.</p>
+          </div>
           }
-          @case ('plot') {
-            <div class="space-y-4">
+          @case (AppTab.Plot) {
+          <div class="space-y-4">
+            <div>
+              <label for="plot-hero" class="text-slate-300 mb-2 font-semibold block">Main Character</label>
+              <div class="relative">
+                <select id="plot-hero" [value]="plotHeroInput()" (change)="updatePlotHeroInput($event)"
+                  class="w-full p-3 pr-10 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 appearance-none">
+                  <option value="" disabled>Select a Hero...</option>
+                  @for(hero of heroes; track hero) {
+                  <option [value]="hero">{{ hero }}</option>
+                  }
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                  <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label for="plot-villain" class="text-slate-300 mb-2 font-semibold block">Antagonist</label>
+              <div class="relative">
+                <select id="plot-villain" [value]="plotVillainInput()" (change)="updatePlotVillainInput($event)"
+                  class="w-full p-3 pr-10 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 appearance-none">
+                  <option value="" disabled>Select a Villain...</option>
+                  @for(villain of villains; track villain) {
+                  <option [value]="villain">{{ villain }}</option>
+                  }
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                  <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label for="plot-theme" class="text-slate-300 mb-2 font-semibold block">Central Theme</label>
+              <div class="relative">
+                <select id="plot-theme" [value]="plotThemeInput()" (change)="updatePlotThemeInput($event)"
+                  class="w-full p-3 pr-10 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 appearance-none">
+                  <option value="" disabled>Select a Theme...</option>
+                  @for(theme of themes; track theme) {
+                  <option [value]="theme">{{ theme }}</option>
+                  }
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                  <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          }
+          @case (AppTab.Style) {
+          <div class="flex flex-col h-full">
+            <label for="style-prompt" class="text-slate-300 mb-2 font-semibold">Visual Style Keywords</label>
+            <textarea id="style-prompt" rows="5" [value]="styleInput()" (input)="updateStyleInput($event)"
+              aria-describedby="style-prompt-desc"
+              class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 placeholder-slate-500"></textarea>
+            <p id="style-prompt-desc" class="text-xs text-slate-500 mt-2">Describe the desired aesthetic (e.g., "90s
+              comic book", "modern anime fusion").</p>
+          </div>
+          }
+          @case (AppTab.Intel) {
+          <div class="flex flex-col h-full">
+            <label for="intel-prompt" class="text-slate-300 mb-2 font-semibold">Character Name</label>
+            <input id="intel-prompt" type="text" [value]="intelInput()" (input)="updateIntelInput($event)"
+              aria-describedby="intel-prompt-desc"
+              class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 placeholder-slate-500" />
+            <p id="intel-prompt-desc" class="text-xs text-slate-500 mt-2">Enter the name of a Marvel character for an
+              intelligence briefing.</p>
+          </div>
+          }
+          @case (AppTab.ConceptArt) {
+          <div class="flex flex-col h-full">
+            <label for="art-prompt" class="text-slate-300 mb-2 font-semibold">Concept Art Prompt</label>
+            <textarea id="art-prompt" rows="5" [value]="conceptArtInput()" (input)="updateConceptArtInput($event)"
+              aria-describedby="art-prompt-desc"
+              class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 placeholder-slate-500"></textarea>
+            <p id="art-prompt-desc" class="text-xs text-slate-500 mt-2">Describe a scene or character for the AI to
+              visualize.</p>
+          </div>
+          }
+          @case (AppTab.ComicStrip) {
+          <div class="space-y-4">
+            <div>
+              <label for="comic-prompt" class="text-slate-300 mb-2 font-semibold block">Story Prompt</label>
+              <textarea id="comic-prompt" rows="5" [value]="comicStripInput()" (input)="updateComicStripInput($event)"
+                aria-describedby="comic-prompt-desc"
+                class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 placeholder-slate-500"></textarea>
+              <p id="comic-prompt-desc" class="text-xs text-slate-500 mt-2">Describe a short story or a scene for the
+                comic strip.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="plot-hero" class="text-slate-300 mb-2 font-semibold block">Main Character</label>
+                <label for="comic-panels" class="text-slate-300 mb-2 font-semibold block">Number of Panels</label>
                 <div class="relative">
-                  <select id="plot-hero" [value]="plotHeroInput()" (change)="updatePlotHeroInput($event)"
+                  <select id="comic-panels" [value]="comicStripPanels()" (change)="updateComicStripPanels($event)"
                     class="w-full p-3 pr-10 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 appearance-none">
-                    @for(hero of heroes; track hero) {
-                      <option [value]="hero">{{ hero }}</option>
+                    @for(panelCount of panelOptions; track panelCount) {
+                    <option [value]="panelCount">{{ panelCount }} Panels</option>
                     }
                   </select>
                   <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
                   </div>
                 </div>
               </div>
               <div>
-                <label for="plot-villain" class="text-slate-300 mb-2 font-semibold block">Antagonist</label>
-                 <div class="relative">
-                    <select id="plot-villain" [value]="plotVillainInput()" (change)="updatePlotVillainInput($event)"
-                      class="w-full p-3 pr-10 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 appearance-none">
-                      @for(villain of villains; track villain) {
-                        <option [value]="villain">{{ villain }}</option>
-                      }
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                      <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                    </div>
+                <label for="comic-style" class="text-slate-300 mb-2 font-semibold block">Art Style</label>
+                <div class="relative">
+                  <select id="comic-style" [value]="comicStripStyle()" (change)="updateComicStripStyle($event)"
+                    class="w-full p-3 pr-10 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 appearance-none">
+                    @for(style of comicStripStyles; track style) {
+                    <option [value]="style">{{ style }}</option>
+                    }
+                  </select>
+                  <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
                   </div>
-              </div>
-              <div>
-                <label for="plot-theme" class="text-slate-300 mb-2 font-semibold block">Central Theme</label>
-                 <div class="relative">
-                    <select id="plot-theme" [value]="plotThemeInput()" (change)="updatePlotThemeInput($event)"
-                      class="w-full p-3 pr-10 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 appearance-none">
-                      @for(theme of themes; track theme) {
-                        <option [value]="theme">{{ theme }}</option>
-                      }
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                      <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                    </div>
-                  </div>
+                </div>
               </div>
             </div>
+          </div>
           }
-          @case ('style') {
+           @case (AppTab.VideoShot) {
             <div class="flex flex-col h-full">
-                <label for="style-prompt" class="text-slate-300 mb-2 font-semibold">Visual Style Keywords</label>
-                <textarea id="style-prompt" rows="5" [value]="styleInput()" (input)="updateStyleInput($event)"
-                  class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 placeholder-slate-500"></textarea>
-                <p class="text-xs text-slate-500 mt-2">Describe the desired aesthetic (e.g., "90s comic book", "modern anime fusion").</p>
+              <label for="video-prompt" class="text-slate-300 mb-2 font-semibold">Video Shot Prompt</label>
+              <textarea id="video-prompt" rows="5" [value]="videoShotInput()" (input)="updateVideoShotInput($event)"
+                aria-describedby="video-prompt-desc"
+                class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 placeholder-slate-500"></textarea>
+              <p id="video-prompt-desc" class="text-xs text-slate-500 mt-2">Describe a cinematic shot (e.g., "Iron Man landing dramatically in a three-point stance").</p>
             </div>
           }
-          @case ('concept-art') {
-            <div class="flex flex-col h-full">
-                <label for="art-prompt" class="text-slate-300 mb-2 font-semibold">Concept Art Prompt</label>
-                <textarea id="art-prompt" rows="5" [value]="conceptArtInput()" (input)="updateConceptArtInput($event)"
-                  class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 placeholder-slate-500"></textarea>
-                <p class="text-xs text-slate-500 mt-2">Describe a scene or character for the AI to visualize.</p>
-            </div>
           }
-          @case ('comic-strip') {
-            <div class="space-y-4">
-              <div>
-                <label for="comic-prompt" class="text-slate-300 mb-2 font-semibold block">Story Prompt</label>
-                <textarea id="comic-prompt" rows="5" [value]="comicStripInput()" (input)="updateComicStripInput($event)"
-                  class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 placeholder-slate-500"></textarea>
-                <p class="text-xs text-slate-500 mt-2">Describe a short story or a scene for the comic strip.</p>
-              </div>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label for="comic-panels" class="text-slate-300 mb-2 font-semibold block">Number of Panels</label>
-                  <div class="relative">
-                    <select id="comic-panels" [value]="comicStripPanels()" (change)="updateComicStripPanels($event)"
-                      class="w-full p-3 pr-10 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 appearance-none">
-                      @for(panelCount of panelOptions; track panelCount) {
-                      <option [value]="panelCount">{{ panelCount }} Panels</option>
-                      }
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                      <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label for="comic-style" class="text-slate-300 mb-2 font-semibold block">Art Style</label>
-                  <div class="relative">
-                    <select id="comic-style" [value]="comicStripStyle()" (change)="updateComicStripStyle($event)"
-                      class="w-full p-3 pr-10 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 appearance-none">
-                      @for(style of comicStripStyles; track style) {
-                      <option [value]="style">{{ style }}</option>
-                      }
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                      <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          }
-        }
-      </div>
+        </div>
 
-      <!-- Generate Button -->
-      <div class="mt-6">
-        <button (click)="generate()" [disabled]="isLoading()"
-          class="w-full py-3 px-6 text-lg font-bold rounded-md transition-all duration-300 flex items-center justify-center
+        <!-- Generate Button -->
+        <div class="mt-6">
+          <button (click)="generate()" [disabled]="isLoading() || isFormInvalid()" class="w-full py-3 px-6 text-lg font-bold rounded-md transition-all duration-300 flex items-center justify-center
           bg-sky-500 hover:bg-sky-400 text-slate-900
-          disabled:bg-slate-600 disabled:cursor-not-allowed">
-          @if(isLoading()) {
-            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          disabled:bg-slate-600 disabled:text-slate-400 disabled:cursor-not-allowed">
+            @if(isLoading()) {
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+              viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+              </path>
             </svg>
             GENERATING...
-          } @else {
+            } @else {
             <span class="tracking-widest">GENERATE BLUEPRINT</span>
-          }
-        </button>
+            }
+          </button>
+        </div>
+
       </div>
 
-    </div>
+      <!-- Right Panel: Output -->
+      <div
+        class="bg-slate-800/50 rounded-lg border border-slate-700 p-6 backdrop-blur-sm overflow-y-auto">
+        <h2 class="text-xl font-bold text-sky-400 border-b border-slate-700 pb-3 mb-4">GENERATED OUTPUT</h2>
 
-    <!-- Right Panel: Output -->
-    <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-6 overflow-y-auto max-h-[80vh] backdrop-blur-sm">
-      <h2 class="text-xl font-bold text-sky-400 border-b border-slate-700 pb-3 mb-4">GENERATED OUTPUT</h2>
-
-      @if (isLoading()) {
-        <div class="flex items-center justify-center h-full">
+        @if (isLoading()) {
+        <div class="flex items-center justify-center h-full" role="status" aria-live="polite">
           <div class="text-center text-slate-400">
-             <svg class="animate-spin mx-auto h-12 w-12 text-sky-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin mx-auto h-12 w-12 text-sky-500" xmlns="http://www.w3.org/2000/svg" fill="none"
+              viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+              </path>
             </svg>
-            <p class="mt-4 text-lg">Contacting the Multiverse...</p>
+            <p class="mt-4 text-lg">{{ loadingMessage() || 'Contacting the Multiverse...' }}</p>
           </div>
         </div>
-      } @else if (error()) {
-        <div class="flex items-center justify-center h-full">
+        } @else if (error()) {
+        <div class="flex items-center justify-center h-full" role="alert" aria-live="assertive">
           <div class="bg-red-900/50 border border-red-500 text-red-300 p-4 rounded-md">
             <h3 class="font-bold">Error</h3>
             <p>{{ error() }}</p>
           </div>
         </div>
-      } @else if (!generatedContent() && !generatedImageUrls()) {
-         <div class="flex items-center justify-center h-full">
-          <div class="text-center text-slate-500">
-            <p>Awaiting creative directive...</p>
-            <p class="text-sm">Configure your generator and press "Generate Blueprint".</p>
+        } @else if (!generatedContent() && !generatedImageUrls()) {
+        <div class="flex items-center justify-center h-full">
+          <div class="text-center text-slate-500 animate-fade-in">
+            <svg class="mx-auto h-24 w-24 text-sky-500/30" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="2.5" result="coloredBlur"></feGaussianBlur>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"></feMergeNode>
+                    <feMergeNode in="SourceGraphic"></feMergeNode>
+                  </feMerge>
+                </filter>
+              </defs>
+              <g class="animate-pulse-slow">
+                <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="2" fill="none" />
+                <circle cx="50" cy="50" r="35" stroke="currentColor" stroke-width="1" fill="none" />
+                <path d="M20,50 L80,50 M50,20 L50,80" stroke="currentColor" stroke-width="1" />
+              </g>
+              <circle cx="50" cy="50" r="10" fill="currentColor" filter="url(#glow)" />
+            </svg>
+            <p class="mt-4 text-lg font-semibold tracking-wider text-slate-400">AWAITING DIRECTIVE</p>
+            <p class="text-sm text-slate-500">M.A.V.E.R.I.C.K. system is online and ready.</p>
           </div>
         </div>
-      } @else {
-        @if (isCharacter(generatedContent())) {
-          @let concept = generatedContent();
-          <div>
-            <div class="space-y-6 animate-fade-in">
-              <h3 class="text-2xl font-bold text-white">{{ concept.name }}</h3>
-              <div>
+        } @else {
+        @let content = generatedContent();
+        @let images = generatedImageUrls();
+        @let videoUrl = generatedVideoUrl();
+
+        @if (isCharacter(content)) {
+        <div>
+          <div class="animate-fade-in">
+            <h3 class="text-2xl font-bold text-white mb-6">{{ content.name }}</h3>
+            <div class="space-y-4">
+              <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
                 <h4 class="text-lg font-semibold text-sky-400 mb-2">Backstory</h4>
-                <p class="text-slate-300 whitespace-pre-wrap">{{ concept.backstory }}</p>
+                <p class="text-slate-300 whitespace-pre-wrap">{{ content.backstory }}</p>
               </div>
-              <div>
+              <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
                 <h4 class="text-lg font-semibold text-sky-400 mb-2">Powers & Abilities</h4>
                 <ul class="list-disc list-inside space-y-1 text-slate-300">
-                  @for(power of concept.powers; track power) {
-                    <li>{{ power }}</li>
+                  @for(power of content.powers; track power) {
+                  <li>{{ power }}</li>
                   }
                 </ul>
               </div>
-              <div>
+              <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
                 <h4 class="text-lg font-semibold text-sky-400 mb-2">Weaknesses</h4>
                 <ul class="list-disc list-inside space-y-1 text-slate-300">
-                  @for(weakness of concept.weaknesses; track weakness) {
-                    <li>{{ weakness }}</li>
+                  @for(weakness of content.weaknesses; track weakness) {
+                  <li>{{ weakness }}</li>
                   }
                 </ul>
               </div>
-              <div>
+              <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
                 <h4 class="text-lg font-semibold text-sky-400 mb-2">Visual Description</h4>
-                <p class="text-slate-300 whitespace-pre-wrap">{{ concept.visualDescription }}</p>
+                <p class="text-slate-300 whitespace-pre-wrap">{{ content.visualDescription }}</p>
               </div>
             </div>
-            <div class="mt-8 text-center">
-              <button (click)="saveTextOutput()" class="inline-flex items-center justify-center px-6 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white">
-                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                  </svg>
-                Save Blueprint
-              </button>
+          </div>
+          <div class="mt-8 text-center">
+            <button (click)="saveTextOutput()"
+              class="inline-flex items-center justify-center px-6 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd"
+                  d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                  clip-rule="evenodd" />
+              </svg>
+              Save Blueprint
+            </button>
+          </div>
+        </div>
+        } @else if (isIntel(content)) {
+        <div>
+          <div class="animate-fade-in">
+            <h3 class="text-2xl font-bold text-white mb-6">Intel Briefing: {{ content.characterName }}</h3>
+            <div class="space-y-4">
+              <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                <h4 class="text-lg font-semibold text-sky-400 mb-2">Basic Intel</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-slate-300">
+                  <div>
+                    <p class="font-bold">Known Aliases:</p>
+                    <p>{{ content.aliases.join(', ') }}</p>
+                  </div>
+                  <div>
+                    <p class="font-bold">Base of Operations:</p>
+                    <p>{{ content.baseOfOperations }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                <h4 class="text-lg font-semibold text-sky-400 mb-2">Abilities Assessment</h4>
+                <ul class="list-disc list-inside space-y-1 text-slate-300">
+                  @for(ability of content.abilities; track ability) {
+                  <li>{{ ability }}</li>
+                  }
+                </ul>
+              </div>
+
+              <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                <h4 class="text-lg font-semibold text-sky-400 mb-2">Psychological Profile</h4>
+                <p class="text-slate-300 whitespace-pre-wrap">{{ content.psychologicalProfile }}</p>
+              </div>
+
+              <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                <h4 class="text-lg font-semibold text-sky-400 mb-2">Exploitable Weaknesses</h4>
+                <ul class="list-disc list-inside space-y-1 text-slate-300">
+                  @for(weakness of content.weaknesses; track weakness) {
+                  <li>{{ weakness }}</li>
+                  }
+                </ul>
+              </div>
             </div>
           </div>
-        } @else if (isPlot(generatedContent())) {
-          @let concept = generatedContent();
-          <div>
-            <div class="space-y-6 animate-fade-in">
-              <h3 class="text-2xl font-bold text-white">Episode Outlines</h3>
-              @for(outline of concept.outlines; track $index) {
-                  <div class="p-4 border-l-2 border-sky-500 bg-slate-900/50 rounded-r-md">
-                    <h4 class="text-lg font-semibold text-sky-400 mb-3">{{ $index + 1 }}. {{ outline.title }}</h4>
-                    <ul class="list-disc list-inside space-y-2 text-slate-300 pl-2">
-                      @for(point of outline.plotPoints; track point) {
-                        <li>{{ point }}</li>
-                      }
-                    </ul>
-                  </div>
+          <div class="mt-8 text-center">
+            <button (click)="saveTextOutput()"
+              class="inline-flex items-center justify-center px-6 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd"
+                  d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                  clip-rule="evenodd" />
+              </svg>
+              Save Briefing
+            </button>
+          </div>
+        </div>
+        } @else if (isPlot(content)) {
+        <div>
+          <div class="animate-fade-in">
+            <h3 class="text-2xl font-bold text-white mb-6">Episode Outlines</h3>
+            <div class="space-y-4">
+              @for(outline of content.outlines; track $index) {
+              <div class="bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden">
+                <div class="p-4 bg-slate-900/70 border-b border-slate-700">
+                  <h4 class="text-lg font-semibold text-sky-400">{{ $index + 1 }}. {{ outline.title }}</h4>
+                </div>
+                <div class="p-4">
+                  <ul class="list-disc list-inside space-y-2 text-slate-300">
+                    @for(point of outline.plotPoints; track point) {
+                    <li>{{ point }}</li>
+                    }
+                  </ul>
+                </div>
+              </div>
               }
             </div>
-            <div class="mt-8 text-center">
-              <button (click)="saveTextOutput()" class="inline-flex items-center justify-center px-6 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white">
-                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                  </svg>
-                Save Blueprint
-              </button>
-            </div>
           </div>
-        } @else if (isStyle(generatedContent())) {
-          @let concept = generatedContent();
-          <div>
-            <div class="space-y-6 animate-fade-in">
-              <h3 class="text-2xl font-bold text-white">{{ concept.styleName }}</h3>
-              <div>
+          <div class="mt-8 text-center">
+            <button (click)="saveTextOutput()"
+              class="inline-flex items-center justify-center px-6 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd"
+                  d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                  clip-rule="evenodd" />
+              </svg>
+              Save Blueprint
+            </button>
+          </div>
+        </div>
+        } @else if (isStyle(content)) {
+        <div>
+          <div class="animate-fade-in">
+            <h3 class="text-2xl font-bold text-white mb-6">{{ content.styleName }}</h3>
+            <div class="space-y-4">
+              <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
                 <h4 class="text-lg font-semibold text-sky-400 mb-2">Overall Aesthetic</h4>
-                <p class="text-slate-300 whitespace-pre-wrap">{{ concept.aesthetic }}</p>
+                <p class="text-slate-300 whitespace-pre-wrap">{{ content.aesthetic }}</p>
               </div>
-              <div>
+              <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
                 <h4 class="text-lg font-semibold text-sky-400 mb-2">Character Design</h4>
-                <p class="text-slate-300 whitespace-pre-wrap">{{ concept.characterDesign }}</p>
+                <p class="text-slate-300 whitespace-pre-wrap">{{ content.characterDesign }}</p>
               </div>
-              <div>
+              <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
                 <h4 class="text-lg font-semibold text-sky-400 mb-2">Color Palette</h4>
-                <p class="text-slate-300 whitespace-pre-wrap">{{ concept.colorPalette }}</p>
+                <p class="text-slate-300 whitespace-pre-wrap">{{ content.colorPalette }}</p>
               </div>
-              <div>
+              <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
                 <h4 class="text-lg font-semibold text-sky-400 mb-2">Background & Environment Style</h4>
-                <p class="text-slate-300 whitespace-pre-wrap">{{ concept.backgroundStyle }}</p>
+                <p class="text-slate-300 whitespace-pre-wrap">{{ content.backgroundStyle }}</p>
               </div>
             </div>
-             <div class="mt-8 text-center">
-              <button (click)="saveTextOutput()" class="inline-flex items-center justify-center px-6 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white">
-                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                  </svg>
-                Save Blueprint
+          </div>
+          <div class="mt-8 text-center">
+            <button (click)="saveTextOutput()"
+              class="inline-flex items-center justify-center px-6 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd"
+                  d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                  clip-rule="evenodd" />
+              </svg>
+              Save Blueprint
+            </button>
+          </div>
+        </div>
+        } @else if (images && images.length > 0) {
+        <div class="space-y-6 animate-fade-in">
+          @if (activeTab() === AppTab.ConceptArt) {
+          <h3 class="text-2xl font-bold text-white">Generated Concept Art</h3>
+          @let imageUrl = images[0];
+          <div class="mt-4 text-center">
+            <div class="p-2 bg-slate-900/50 rounded-lg inline-block">
+              <img [src]="imageUrl" alt="Generated concept art"
+                class="rounded-md border-2 border-sky-500/50 shadow-lg max-w-full h-auto" />
+            </div>
+            <div class="mt-4">
+              <button (click)="saveConceptArt(imageUrl)"
+                class="inline-flex items-center justify-center px-6 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd"
+                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                    clip-rule="evenodd" />
+                </svg>
+                Save Image
               </button>
             </div>
           </div>
-        } @else if (generatedImageUrls() && generatedImageUrls()!.length > 0) {
-          <div class="space-y-6 animate-fade-in">
-            @if (activeTab() === 'concept-art') {
-              <h3 class="text-2xl font-bold text-white">Generated Concept Art</h3>
-              @let imageUrl = generatedImageUrls()![0];
-              <div class="mt-4 text-center">
-                <div class="p-2 bg-slate-900/50 rounded-lg inline-block">
-                  <img [src]="imageUrl" alt="Generated concept art" class="rounded-md border-2 border-sky-500/50 shadow-lg max-w-full h-auto"/>
-                </div>
-                <div class="mt-4">
-                  <button (click)="saveConceptArt(imageUrl)" class="inline-flex items-center justify-center px-6 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                    </svg>
-                    Save Image
-                  </button>
-                </div>
-              </div>
-            } @else if (activeTab() === 'comic-strip') {
-              <h3 class="text-2xl font-bold text-white">Generated Comic Strip</h3>
-              <div class="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2">
-                @for(imageUrl of generatedImageUrls(); track $index) {
-                  <div class="p-2 bg-slate-900/50 rounded-lg flex flex-col items-center">
-                    <p class="text-center text-slate-400 font-bold mb-2">Panel {{ $index + 1 }}</p>
-                    <img [src]="imageUrl" [alt]="'Generated comic strip panel ' + ($index + 1)" class="rounded-md border-2 border-sky-500/50 shadow-lg w-full h-auto"/>
-                    <button (click)="saveComicPanel(imageUrl, $index)" class="inline-flex mt-4 items-center justify-center px-4 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white text-sm">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                      </svg>
-                      Save Panel
-                    </button>
-                  </div>
-                }
-              </div>
+          } @else if (activeTab() === AppTab.ComicStrip) {
+          <h3 class="text-2xl font-bold text-white">Generated Comic Strip</h3>
+          <div class="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2">
+            @for(imageUrl of images; track $index) {
+            <div class="p-2 bg-slate-900/50 rounded-lg flex flex-col items-center">
+              <p class="text-center text-slate-400 font-bold mb-2">Panel {{ $index + 1 }}</p>
+              <img [src]="imageUrl" [alt]="'Generated comic strip panel ' + ($index + 1)"
+                class="rounded-md border-2 border-sky-500/50 shadow-lg w-full h-auto" />
+              <button (click)="saveComicPanel(imageUrl, $index)"
+                class="inline-flex mt-4 items-center justify-center px-4 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd"
+                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                    clip-rule="evenodd" />
+                </svg>
+                Save Panel
+              </button>
+            </div>
             }
           </div>
+          }
+        </div>
+        } @else if (isVideo(content) && videoUrl) {
+        <div>
+          <h3 class="text-2xl font-bold text-white">Generated Video Shot</h3>
+          <div class="mt-4 text-center">
+            <div class="p-2 bg-slate-900/50 rounded-lg inline-block">
+              <video [src]="videoUrl" controls autoplay loop
+                class="rounded-md border-2 border-sky-500/50 shadow-lg max-w-full h-auto"></video>
+            </div>
+            <div class="mt-4">
+              <button (click)="saveVideoShot(videoUrl)"
+                class="inline-flex items-center justify-center px-6 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd"
+                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                    clip-rule="evenodd" />
+                </svg>
+                Save Video
+              </button>
+            </div>
+          </div>
+        </div>
         }
-      }
-    </div>
+        }
+      </div>
 
-  </main>
+    </main>
+  </div>
 </div>
 <style>
   @keyframes fade-in {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
+
   .animate-fade-in {
     animation: fade-in 0.5s ease-out forwards;
+  }
+
+  @keyframes pulse-slow {
+
+    0%,
+    100% {
+      opacity: 0.5;
+    }
+
+    50% {
+      opacity: 1;
+    }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 </style>

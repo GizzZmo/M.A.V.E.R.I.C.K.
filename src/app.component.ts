@@ -1,10 +1,18 @@
-import { ChangeDetectionStrategy, Component, inject, signal, WritableSignal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, signal, WritableSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { GeminiService } from './services/gemini.service';
-import { GeneratedConcept, CharacterConcept, PlotOutline, VisualStyle } from './models/marvel-concept.model';
-import { marvelHeroes, marvelVillains, marvelThemes } from './data/marvel-data';
+import { GeminiService } from './services/gemini.service.js';
+import type { GeneratedConcept, CharacterConcept, PlotOutline, VisualStyle, CharacterIntel, VideoShot } from './models/marvel-concept.model.js';
+import { marvelHeroes, marvelVillains, marvelThemes } from './data/marvel-data.js';
 
-type ActiveTab = 'character' | 'plot' | 'style' | 'concept-art' | 'comic-strip';
+export enum AppTab {
+  Character = 'character',
+  Plot = 'plot',
+  Style = 'style',
+  Intel = 'intel',
+  ConceptArt = 'concept-art',
+  ComicStrip = 'comic-strip',
+  VideoShot = 'video-shot'
+}
 
 @Component({
   selector: 'app-root',
@@ -13,14 +21,21 @@ type ActiveTab = 'character' | 'plot' | 'style' | 'concept-art' | 'comic-strip';
   templateUrl: './app.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppComponent {
-  private geminiService = inject(GeminiService);
+export class AppComponent implements OnDestroy {
+  public geminiService = inject(GeminiService);
 
-  activeTab: WritableSignal<ActiveTab> = signal('character');
+  // Expose enum to template
+  AppTab = AppTab;
+
+  // FIX: Removed API key input signal as it's no longer needed.
+  
+  activeTab: WritableSignal<AppTab> = signal(AppTab.Character);
   isLoading = signal(false);
+  loadingMessage = signal<string | null>(null);
   error = signal<string | null>(null);
   generatedContent = signal<GeneratedConcept | null>(null);
   generatedImageUrls = signal<string[] | null>(null);
+  generatedVideoUrl = signal<string | null>(null);
 
   // Data for dropdowns
   heroes = marvelHeroes;
@@ -31,20 +46,53 @@ export class AppComponent {
 
   // Form inputs
   characterInput = signal('A tech-based hero from a futuristic Wakandan outpost who can manipulate sound waves.');
-  plotHeroInput = signal(this.heroes[0]);
-  plotVillainInput = signal(this.villains[0]);
-  plotThemeInput = signal(this.themes[0]);
+  plotHeroInput = signal('');
+  plotVillainInput = signal('');
+  plotThemeInput = signal('');
   styleInput = signal('A blend of classic Jack Kirby cosmic energy with modern, fluid anime action sequences.');
+  intelInput = signal('Doctor Doom');
   conceptArtInput = signal('A dynamic action shot of a new hero, soaring over a neon-lit futuristic city at night, energy crackling around them.');
   comicStripInput = signal('Spider-Man trying to buy groceries, but he forgot his wallet and the cashier is unimpressed.');
   comicStripPanels = signal(2);
   comicStripStyle = signal(this.comicStripStyles[0]);
+  videoShotInput = signal('Cinematic shot of Captain America throwing his shield in slow motion through a swarm of Ultron bots.');
 
-  setActiveTab(tab: ActiveTab) {
+  private lastVideoUrl: string | null = null;
+
+  isFormInvalid = computed(() => {
+    const tab = this.activeTab();
+    if (tab === AppTab.Plot) {
+      return !this.plotHeroInput() || !this.plotVillainInput() || !this.plotThemeInput();
+    }
+    return false;
+  });
+
+  ngOnDestroy() {
+    this.revokeLastVideoUrl();
+  }
+
+  private revokeLastVideoUrl() {
+    if (this.lastVideoUrl) {
+      URL.revokeObjectURL(this.lastVideoUrl);
+      this.lastVideoUrl = null;
+    }
+  }
+
+  setActiveTab(tab: AppTab) {
     this.activeTab.set(tab);
     this.generatedContent.set(null);
     this.generatedImageUrls.set(null);
+    this.generatedVideoUrl.set(null);
+    this.revokeLastVideoUrl();
     this.error.set(null);
+  }
+
+  getTabClasses(tab: AppTab): string {
+    const baseClasses = 'px-4 py-2 -mb-px text-sm font-semibold border-b-2 transition-colors duration-200';
+    if (this.activeTab() === tab) {
+      return `${baseClasses} text-sky-400 border-sky-400`;
+    }
+    return `${baseClasses} text-slate-400 border-transparent hover:text-sky-300`;
   }
 
   async generate() {
@@ -52,35 +100,50 @@ export class AppComponent {
     this.error.set(null);
     this.generatedContent.set(null);
     this.generatedImageUrls.set(null);
+    this.generatedVideoUrl.set(null);
+    this.loadingMessage.set(null);
+    this.revokeLastVideoUrl();
 
     try {
       const tab = this.activeTab();
-      let response: any;
-      if (tab === 'character') {
-        const prompt = `Generate a detailed character blueprint for a new hero or villain in the Marvel universe. The character's core concept is: "${this.characterInput()}". Provide a creative name, a compelling backstory, a list of unique powers/abilities, a list of meaningful weaknesses, and a detailed visual description for concept art. Structure the response as a JSON object.`;
-        response = await this.geminiService.generateJSON(prompt, this.geminiService.getCharacterSchema());
+      if (tab === AppTab.Character) {
+        const response = await this.geminiService.generateCharacterConcept(this.characterInput());
         this.generatedContent.set({ ...response, type: 'character' });
-      } else if (tab === 'plot') {
-        const prompt = `Create three distinct episode plot outlines for a Marvel animated series. The episode should feature ${this.plotHeroInput()} facing off against ${this.plotVillainInput()} with a central theme of "${this.plotThemeInput()}". For each outline, provide a catchy title and three key plot points that cover the beginning, middle, and end of the story. Structure the response as a JSON object.`;
-        response = await this.geminiService.generateJSON(prompt, this.geminiService.getPlotSchema());
+      } else if (tab === AppTab.Plot) {
+        const response = await this.geminiService.generatePlotOutline(this.plotHeroInput(), this.plotVillainInput(), this.plotThemeInput());
         this.generatedContent.set({ ...response, type: 'plot' });
-      } else if (tab === 'style') {
-        const prompt = `Develop a detailed visual style guide for a new Marvel animated series based on the following keywords: "${this.styleInput()}". Describe the overall aesthetic, character design approach, color palette, line weight, and background art style. Provide actionable notes for pre-production artists. Structure the response as a JSON object.`;
-        response = await this.geminiService.generateJSON(prompt, this.geminiService.getStyleSchema());
+      } else if (tab === AppTab.Style) {
+        const response = await this.geminiService.generateVisualStyle(this.styleInput());
         this.generatedContent.set({ ...response, type: 'style' });
-      } else if (tab === 'concept-art') {
-        const prompt = `Generate a high-quality, cinematic concept art image for the Marvel universe, suitable for pre-production. The prompt is: "${this.conceptArtInput()}". The style should be dynamic and detailed.`;
-        const imageUrls = await this.geminiService.generateImages(prompt, 1);
+      } else if (tab === AppTab.Intel) {
+        const response = await this.geminiService.generateCharacterIntel(this.intelInput());
+        this.generatedContent.set({ ...response, type: 'intel' });
+      } else if (tab === AppTab.ConceptArt) {
+        const imageUrls = await this.geminiService.generateConceptArt(this.conceptArtInput());
         this.generatedImageUrls.set(imageUrls);
-      } else if (tab === 'comic-strip') {
-        const prompt = `Generate a comic strip with ${this.comicStripPanels()} panels in a ${this.comicStripStyle()} style. The story is: "${this.comicStripInput()}". Each generated image should be a distinct panel in sequence.`;
-        const imageUrls = await this.geminiService.generateImages(prompt, this.comicStripPanels());
+      } else if (tab === AppTab.ComicStrip) {
+        const imageUrls = await this.geminiService.generateComicStrip(
+          this.comicStripInput(),
+          this.comicStripPanels(),
+          this.comicStripStyle()
+        );
         this.generatedImageUrls.set(imageUrls);
+      } else if (tab === AppTab.VideoShot) {
+        this.loadingMessage.set('Initiating video generation...');
+        const videoBlob = await this.geminiService.generateVideoShot(
+          this.videoShotInput(),
+          (message: string) => this.loadingMessage.set(message)
+        );
+        const videoUrl = URL.createObjectURL(videoBlob);
+        this.generatedVideoUrl.set(videoUrl);
+        this.lastVideoUrl = videoUrl;
+        this.generatedContent.set({ type: 'video' });
       }
     } catch (e: any) {
       this.error.set(e.message || 'An unknown error occurred.');
     } finally {
       this.isLoading.set(false);
+      this.loadingMessage.set(null);
     }
   }
   
@@ -112,6 +175,14 @@ export class AppComponent {
       fileContent += `== CHARACTER DESIGN ==\n${concept.characterDesign}\n\n`;
       fileContent += `== COLOR PALETTE ==\n${concept.colorPalette}\n\n`;
       fileContent += `== BACKGROUND & ENVIRONMENT STYLE ==\n${concept.backgroundStyle}`;
+    } else if (this.isIntel(concept)) {
+      fileName = `intel-briefing-${concept.characterName.replace(/\s+/g, '_')}.txt`;
+      fileContent = `INTELLIGENCE BRIEFING: ${concept.characterName.toUpperCase()}\n\n`;
+      fileContent += `KNOWN ALIASES: ${concept.aliases.join(', ')}\n`;
+      fileContent += `BASE OF OPERATIONS: ${concept.baseOfOperations}\n\n`;
+      fileContent += `== ABILITIES ASSESSMENT ==\n${concept.abilities.map(p => `- ${p}`).join('\n')}\n\n`;
+      fileContent += `== PSYCHOLOGICAL PROFILE ==\n${concept.psychologicalProfile}\n\n`;
+      fileContent += `== EXPLOITABLE WEAKNESSES ==\n${concept.weaknesses.map(w => `- ${w}`).join('\n')}`;
     }
 
     if (fileContent) {
@@ -142,6 +213,11 @@ export class AppComponent {
     this._downloadImageFile(url, `comic-panel-${index + 1}.jpeg`);
   }
 
+  saveVideoShot(url: string): void {
+    if (!url) return;
+    this._downloadImageFile(url, 'video-shot.mp4');
+  }
+
   private _downloadImageFile(url: string, fileName: string): void {
     const link = document.createElement('a');
     link.href = url;
@@ -165,6 +241,14 @@ export class AppComponent {
     return concept?.type === 'style';
   }
 
+  isIntel(concept: GeneratedConcept | null): concept is CharacterIntel {
+    return concept?.type === 'intel';
+  }
+
+  isVideo(concept: GeneratedConcept | null): concept is VideoShot {
+    return concept?.type === 'video';
+  }
+
   updateCharacterInput(event: Event) {
     this.characterInput.set((event.target as HTMLTextAreaElement).value);
   }
@@ -185,6 +269,10 @@ export class AppComponent {
     this.styleInput.set((event.target as HTMLTextAreaElement).value);
   }
   
+  updateIntelInput(event: Event) {
+    this.intelInput.set((event.target as HTMLInputElement).value);
+  }
+  
   updateConceptArtInput(event: Event) {
     this.conceptArtInput.set((event.target as HTMLTextAreaElement).value);
   }
@@ -200,4 +288,10 @@ export class AppComponent {
   updateComicStripStyle(event: Event) {
     this.comicStripStyle.set((event.target as HTMLSelectElement).value);
   }
+
+  updateVideoShotInput(event: Event) {
+    this.videoShotInput.set((event.target as HTMLTextAreaElement).value);
+  }
+  
+  // FIX: Removed methods for API key modal.
 }
