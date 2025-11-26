@@ -14,7 +14,7 @@
     "@angular/core": "20.1.0",
     "@angular/platform-browser": "20.1.0",
     "@angular/compiler": "20.1.0",
-    "@angular/common": "20.1.0",
+    "@angular/common": "20.3.14",
     "@angular/build": "20.1.0",
     "@angular/cli": "20.1.0",
     "@angular/compiler-cli": "20.1.0",
