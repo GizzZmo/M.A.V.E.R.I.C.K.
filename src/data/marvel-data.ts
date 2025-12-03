@@ -1,3 +1,13 @@
+/**
+ * @fileoverview Marvel character and theme data for the pre-production blueprint application.
+ * This module provides curated lists of Marvel heroes, villains, and narrative themes
+ * to be used in plot generation and character selection.
+ */
+
+/**
+ * Curated list of iconic Marvel heroes.
+ * Includes both classic and modern characters from the Marvel Universe.
+ */
 export const marvelHeroes: string[] = [
   'Spider-Man (Peter Parker)',
   'Spider-Man (Miles Morales)',
@@ -21,6 +31,10 @@ export const marvelHeroes: string[] = [
   'She-Hulk',
 ];
 
+/**
+ * Curated list of iconic Marvel villains.
+ * Includes major antagonists from across the Marvel Universe.
+ */
 export const marvelVillains: string[] = [
   'Thanos',
   'Doctor Doom',
@@ -39,6 +53,10 @@ export const marvelVillains: string[] = [
   'Ultron',
 ];
 
+/**
+ * Common narrative themes found in Marvel stories.
+ * These themes can be used to generate compelling episode plots.
+ */
 export const marvelThemes: string[] = [
   'Family legacy and betrayal',
   'The price of power',
