@@ -15,6 +15,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, signal, WritableSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GeminiService } from './services/gemini.service.js';
+import { AuthService } from './services/auth.service.js';
+import { ProjectService } from './services/project.service.js';
+import { BatchGenerationService } from './services/batch-generation.service.js';
 import type { GeneratedConcept, CharacterConcept, PlotOutline, VisualStyle, CharacterIntel, VideoShot } from './models/marvel-concept.model.js';
 import { marvelHeroes, marvelVillains, marvelThemes, artStyles } from './data/marvel-data.js';
 
@@ -62,6 +65,15 @@ export enum AppTab {
 export class AppComponent implements OnDestroy {
   /** Injected Gemini AI service for content generation */
   public geminiService = inject(GeminiService);
+  
+  /** Injected Auth service for user authentication */
+  public authService = inject(AuthService);
+  
+  /** Injected Project service for project management */
+  public projectService = inject(ProjectService);
+  
+  /** Injected Batch Generation service for batch processing */
+  public batchService = inject(BatchGenerationService);
 
   /** Expose AppTab enum to template */
   AppTab = AppTab;
@@ -88,6 +100,36 @@ export class AppComponent implements OnDestroy {
   
   /** Generated video URL (as object URL from Blob) */
   generatedVideoUrl = signal<string | null>(null);
+  
+  // === New Feature UI State Signals ===
+  
+  /** Show authentication modal */
+  showAuthModal = signal(false);
+  
+  /** Authentication form mode ('login' or 'signup') */
+  authMode = signal<'login' | 'signup'>('login');
+  
+  /** Show project management panel */
+  showProjectPanel = signal(false);
+  
+  /** Show batch generation panel */
+  showBatchPanel = signal(false);
+  
+  /** Currently selected batch content type */
+  batchContentType = signal<'character' | 'plot' | 'style' | 'intel' | 'concept-art'>('character');
+  
+  /** Batch input prompts (one per line) */
+  batchInputs = signal('');
+  
+  /** Authentication form inputs */
+  authEmail = signal('');
+  authPassword = signal('');
+  authName = signal('');
+  
+  /** Project form inputs */
+  projectName = signal('');
+  projectDescription = signal('');
+  projectTags = signal('');
 
   // === UI Data Sources ===
   
@@ -154,6 +196,13 @@ export class AppComponent implements OnDestroy {
       return !this.plotHeroInput() || !this.plotVillainInput() || !this.plotThemeInput();
     }
     return false;
+  });
+  
+  /**
+   * Computed signal that determines if there is content to save.
+   */
+  hasContentToSave = computed(() => {
+    return !!(this.generatedContent() || this.generatedImageUrls() || this.generatedVideoUrl());
   });
 
   /**
@@ -518,5 +567,336 @@ export class AppComponent implements OnDestroy {
    */
   updateVideoShotInput(event: Event) {
     this.videoShotInput.set((event.target as HTMLTextAreaElement).value);
+  }
+  
+  // === Authentication Methods ===
+  
+  /**
+   * Opens the authentication modal in the specified mode.
+   * @param {'login' | 'signup'} mode - The authentication mode
+   */
+  openAuthModal(mode: 'login' | 'signup' = 'login') {
+    this.authMode.set(mode);
+    this.showAuthModal.set(true);
+    this.authEmail.set('');
+    this.authPassword.set('');
+    this.authName.set('');
+  }
+  
+  /**
+   * Closes the authentication modal.
+   */
+  closeAuthModal() {
+    this.showAuthModal.set(false);
+  }
+  
+  /**
+   * Handles user login.
+   */
+  async handleLogin() {
+    try {
+      this.isLoading.set(true);
+      this.error.set(null);
+      await this.authService.login(this.authEmail(), this.authPassword());
+      this.closeAuthModal();
+    } catch (err) {
+      this.error.set(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+  
+  /**
+   * Handles user signup.
+   */
+  async handleSignup() {
+    try {
+      this.isLoading.set(true);
+      this.error.set(null);
+      await this.authService.signup(this.authEmail(), this.authPassword(), this.authName());
+      this.closeAuthModal();
+    } catch (err) {
+      this.error.set(err instanceof Error ? err.message : 'Signup failed');
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+  
+  /**
+   * Handles user logout.
+   */
+  handleLogout() {
+    this.authService.logout();
+  }
+  
+  /**
+   * Updates auth email input.
+   * @param {Event} event - The input event
+   */
+  updateAuthEmail(event: Event) {
+    this.authEmail.set((event.target as HTMLInputElement).value);
+  }
+  
+  /**
+   * Updates auth password input.
+   * @param {Event} event - The input event
+   */
+  updateAuthPassword(event: Event) {
+    this.authPassword.set((event.target as HTMLInputElement).value);
+  }
+  
+  /**
+   * Updates auth name input.
+   * @param {Event} event - The input event
+   */
+  updateAuthName(event: Event) {
+    this.authName.set((event.target as HTMLInputElement).value);
+  }
+  
+  // === Project Management Methods ===
+  
+  /**
+   * Toggles the project management panel.
+   */
+  toggleProjectPanel() {
+    this.showProjectPanel.update(val => !val);
+  }
+  
+  /**
+   * Creates a new project.
+   */
+  async createProject() {
+    if (!this.projectName()) {
+      this.error.set('Project name is required');
+      return;
+    }
+    
+    try {
+      const userId = this.authService.currentUser()?.id;
+      if (!userId) {
+        this.error.set('You must be logged in to create a project');
+        return;
+      }
+      
+      this.isLoading.set(true);
+      this.error.set(null);
+      
+      const projectTagsValue = this.projectTags();
+      const tags = projectTagsValue 
+        ? projectTagsValue.split(',').map(t => t.trim()).filter(t => t)
+        : [];
+      
+      await this.projectService.createProject(
+        this.projectName(),
+        this.projectDescription(),
+        userId,
+        tags
+      );
+      
+      // Reset form
+      this.projectName.set('');
+      this.projectDescription.set('');
+      this.projectTags.set('');
+    } catch (err) {
+      this.error.set(err instanceof Error ? err.message : 'Failed to create project');
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+  
+  /**
+   * Saves current generated content to the active project.
+   */
+  async saveToProject() {
+    const content = this.generatedContent();
+    const images = this.generatedImageUrls();
+    const video = this.generatedVideoUrl();
+    
+    if (!content && !images && !video) {
+      this.error.set('No content to save');
+      return;
+    }
+    
+    try {
+      this.isLoading.set(true);
+      this.error.set(null);
+      
+      let contentType: 'character' | 'plot' | 'style' | 'intel' | 'concept-art' | 'comic-strip' | 'video';
+      let prompt = '';
+      
+      switch (this.activeTab()) {
+        case AppTab.Character:
+          contentType = 'character';
+          prompt = this.characterInput();
+          break;
+        case AppTab.Plot:
+          contentType = 'plot';
+          prompt = `${this.plotHeroInput()} vs ${this.plotVillainInput()} - ${this.plotThemeInput()}`;
+          break;
+        case AppTab.Style:
+          contentType = 'style';
+          prompt = this.styleInput();
+          break;
+        case AppTab.Intel:
+          contentType = 'intel';
+          prompt = this.intelInput();
+          break;
+        case AppTab.ConceptArt:
+          contentType = 'concept-art';
+          prompt = this.conceptArtInput();
+          break;
+        case AppTab.ComicStrip:
+          contentType = 'comic-strip';
+          prompt = this.comicStripInput();
+          break;
+        case AppTab.VideoShot:
+          contentType = 'video';
+          prompt = this.videoShotInput();
+          break;
+        default:
+          contentType = 'character';
+          prompt = '';
+      }
+      
+      await this.projectService.addContentToCurrentProject({
+        contentType,
+        concept: content || undefined,
+        imageUrls: images || undefined,
+        videoUrl: video || undefined,
+        prompt
+      });
+      
+    } catch (err) {
+      this.error.set(err instanceof Error ? err.message : 'Failed to save to project');
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+  
+  /**
+   * Exports the current project as JSON.
+   */
+  async exportProject() {
+    try {
+      const currentProject = this.projectService.currentProject();
+      if (!currentProject) {
+        this.error.set('No active project to export');
+        return;
+      }
+      
+      this.isLoading.set(true);
+      this.error.set(null);
+      await this.projectService.exportProject(currentProject.id);
+    } catch (err) {
+      this.error.set(err instanceof Error ? err.message : 'Failed to export project');
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+  
+  /**
+   * Updates project name input.
+   * @param {Event} event - The input event
+   */
+  updateProjectName(event: Event) {
+    this.projectName.set((event.target as HTMLInputElement).value);
+  }
+  
+  /**
+   * Updates project description input.
+   * @param {Event} event - The input event
+   */
+  updateProjectDescription(event: Event) {
+    this.projectDescription.set((event.target as HTMLTextAreaElement).value);
+  }
+  
+  /**
+   * Updates project tags input.
+   * @param {Event} event - The input event
+   */
+  updateProjectTags(event: Event) {
+    this.projectTags.set((event.target as HTMLInputElement).value);
+  }
+  
+  // === Batch Generation Methods ===
+  
+  /**
+   * Toggles the batch generation panel.
+   */
+  toggleBatchPanel() {
+    this.showBatchPanel.update(val => !val);
+  }
+  
+  /**
+   * Updates batch content type.
+   * @param {Event} event - The change event
+   */
+  updateBatchContentType(event: Event) {
+    const value = (event.target as HTMLSelectElement).value;
+    if (value === 'character' || value === 'plot' || value === 'style' || value === 'intel' || value === 'concept-art') {
+      this.batchContentType.set(value);
+    }
+  }
+  
+  /**
+   * Updates batch inputs.
+   * @param {Event} event - The input event
+   */
+  updateBatchInputs(event: Event) {
+    this.batchInputs.set((event.target as HTMLTextAreaElement).value);
+  }
+  
+  /**
+   * Starts batch generation.
+   */
+  async startBatchGeneration() {
+    const inputs = this.batchInputs()
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+    
+    if (inputs.length === 0) {
+      this.error.set('Please enter at least one prompt (one per line)');
+      return;
+    }
+    
+    try {
+      this.isLoading.set(true);
+      this.error.set(null);
+      
+      const type = this.batchContentType();
+      
+      switch (type) {
+        case 'character':
+          await this.batchService.batchGenerateCharacters(inputs);
+          break;
+        case 'plot':
+          // For plots, we need hero, villain, theme - use first input as theme
+          const plotInputs = inputs.map(theme => ({
+            hero: this.plotHeroInput() || 'Spider-Man',
+            villain: this.plotVillainInput() || 'Green Goblin',
+            theme
+          }));
+          await this.batchService.batchGeneratePlots(plotInputs);
+          break;
+        case 'style':
+          await this.batchService.batchGenerateStyles(inputs);
+          break;
+        case 'intel':
+          await this.batchService.batchGenerateIntel(inputs);
+          break;
+        case 'concept-art':
+          await this.batchService.batchGenerateConceptArt(inputs);
+          break;
+      }
+      
+      // Reset batch inputs after successful generation
+      this.batchInputs.set('');
+      
+    } catch (err) {
+      this.error.set(err instanceof Error ? err.message : 'Batch generation failed');
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 }

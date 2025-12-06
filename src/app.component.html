@@ -8,6 +8,47 @@
         </h1>
         <p class="text-sm text-slate-400">Marvel Animated Verse & Entity Resource for Ideation & Creative Kickstart</p>
       </div>
+      <div class="flex items-center gap-4">
+        <!-- Project Management Button -->
+        <button (click)="toggleProjectPanel()" 
+          class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-md transition-all duration-200 font-semibold text-sm flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+          </svg>
+          PROJECTS
+        </button>
+        
+        <!-- Batch Generation Button -->
+        <button (click)="toggleBatchPanel()" 
+          class="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-md transition-all duration-200 font-semibold text-sm flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+          </svg>
+          BATCH
+        </button>
+        
+        <!-- Authentication UI -->
+        @if (authService.isAuthenticated()) {
+          <div class="flex items-center gap-3">
+            <span class="text-slate-300 text-sm">{{ authService.currentUser()?.name }}</span>
+            <button (click)="handleLogout()" 
+              class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-md transition-all duration-200 font-semibold text-sm">
+              LOGOUT
+            </button>
+          </div>
+        } @else {
+          <div class="flex gap-2">
+            <button (click)="openAuthModal('login')" 
+              class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-md transition-all duration-200 font-semibold text-sm">
+              LOGIN
+            </button>
+            <button (click)="openAuthModal('signup')" 
+              class="px-4 py-2 bg-sky-700 hover:bg-sky-600 text-white rounded-md transition-all duration-200 font-semibold text-sm">
+              SIGNUP
+            </button>
+          </div>
+        }
+      </div>
     </header>
 
     <main class="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-0">
@@ -506,6 +547,302 @@
 
     </main>
   </div>
+  
+  <!-- Authentication Modal -->
+  @if (showAuthModal()) {
+    <div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+      <div class="bg-slate-800 border-2 border-sky-500/50 rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-sky-400">
+            {{ authMode() === 'login' ? 'LOGIN' : 'SIGN UP' }}
+          </h2>
+          <button (click)="closeAuthModal()" class="text-slate-400 hover:text-white transition-colors">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <form class="space-y-4" (submit)="$event.preventDefault(); authMode() === 'login' ? handleLogin() : handleSignup()">
+          @if (authMode() === 'signup') {
+            <div>
+              <label for="auth-name" class="block text-slate-300 mb-2 font-semibold">Name</label>
+              <input 
+                id="auth-name" 
+                type="text" 
+                [value]="authName()" 
+                (input)="updateAuthName($event)"
+                required
+                class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200"
+                placeholder="Enter your name"
+              />
+            </div>
+          }
+          
+          <div>
+            <label for="auth-email" class="block text-slate-300 mb-2 font-semibold">Email</label>
+            <input 
+              id="auth-email" 
+              type="email" 
+              [value]="authEmail()" 
+              (input)="updateAuthEmail($event)"
+              required
+              class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200"
+              placeholder="Enter your email"
+            />
+          </div>
+          
+          <div>
+            <label for="auth-password" class="block text-slate-300 mb-2 font-semibold">Password</label>
+            <input 
+              id="auth-password" 
+              type="password" 
+              [value]="authPassword()" 
+              (input)="updateAuthPassword($event)"
+              required
+              class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200"
+              placeholder="Enter your password"
+            />
+          </div>
+          
+          <button 
+            type="submit"
+            [disabled]="isLoading()"
+            class="w-full py-3 px-6 text-lg font-bold rounded-md transition-all duration-300 bg-sky-500 hover:bg-sky-400 text-slate-900 disabled:bg-slate-600 disabled:text-slate-400 disabled:cursor-not-allowed">
+            {{ authMode() === 'login' ? 'LOGIN' : 'SIGN UP' }}
+          </button>
+          
+          <div class="text-center text-slate-400 text-sm">
+            {{ authMode() === 'login' ? "Don't have an account?" : 'Already have an account?' }}
+            <button 
+              type="button"
+              (click)="authMode.set(authMode() === 'login' ? 'signup' : 'login')"
+              class="text-sky-400 hover:text-sky-300 ml-1 font-semibold">
+              {{ authMode() === 'login' ? 'Sign up' : 'Login' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+  
+  <!-- Project Management Panel -->
+  @if (showProjectPanel()) {
+    <div class="fixed inset-y-0 right-0 w-96 bg-slate-800 border-l-2 border-sky-500/50 shadow-2xl z-40 overflow-y-auto animate-slide-in-right">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-sky-400">PROJECTS</h2>
+          <button (click)="toggleProjectPanel()" class="text-slate-400 hover:text-white transition-colors">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Current Project Info -->
+        @if (projectService.currentProject()) {
+          <div class="mb-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-semibold text-sky-400 mb-2">Current Project</h3>
+            <p class="text-white font-bold">{{ projectService.currentProject()!.name }}</p>
+            <p class="text-slate-400 text-sm mt-1">{{ projectService.currentProject()!.description }}</p>
+            <div class="flex gap-2 mt-4">
+              <button 
+                (click)="saveToProject()"
+                [disabled]="!hasContentToSave()"
+                class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-md transition-all duration-200 font-semibold text-sm disabled:bg-slate-600 disabled:cursor-not-allowed">
+                Save Content
+              </button>
+              <button 
+                (click)="exportProject()"
+                class="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-md transition-all duration-200 font-semibold text-sm">
+                Export
+              </button>
+            </div>
+          </div>
+        }
+        
+        <!-- Create New Project -->
+        <div class="mb-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+          <h3 class="text-lg font-semibold text-sky-400 mb-4">Create New Project</h3>
+          <form (submit)="$event.preventDefault(); createProject()" class="space-y-3">
+            <div>
+              <label for="project-name" class="block text-slate-300 mb-1 text-sm font-semibold">Project Name</label>
+              <input 
+                id="project-name" 
+                type="text" 
+                [value]="projectName()" 
+                (input)="updateProjectName($event)"
+                required
+                class="w-full p-2 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:outline-none text-slate-200 text-sm"
+                placeholder="My Marvel Project"
+              />
+            </div>
+            
+            <div>
+              <label for="project-desc" class="block text-slate-300 mb-1 text-sm font-semibold">Description</label>
+              <textarea 
+                id="project-desc" 
+                [value]="projectDescription()" 
+                (input)="updateProjectDescription($event)"
+                rows="3"
+                class="w-full p-2 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:outline-none text-slate-200 text-sm"
+                placeholder="Project description..."
+              ></textarea>
+            </div>
+            
+            <div>
+              <label for="project-tags" class="block text-slate-300 mb-1 text-sm font-semibold">Tags (comma-separated)</label>
+              <input 
+                id="project-tags" 
+                type="text" 
+                [value]="projectTags()" 
+                (input)="updateProjectTags($event)"
+                class="w-full p-2 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:outline-none text-slate-200 text-sm"
+                placeholder="hero, villain, concept"
+              />
+            </div>
+            
+            <button 
+              type="submit"
+              [disabled]="isLoading() || !projectName()"
+              class="w-full py-2 px-4 bg-sky-600 hover:bg-sky-500 text-white rounded-md transition-all duration-200 font-semibold text-sm disabled:bg-slate-600 disabled:cursor-not-allowed">
+              Create Project
+            </button>
+          </form>
+        </div>
+        
+        <!-- Project List -->
+        <div class="space-y-3">
+          <h3 class="text-lg font-semibold text-sky-400">Your Projects</h3>
+          @if (projectService.projects().length > 0) {
+            @for (project of projectService.projects(); track project.id) {
+              <div 
+                (click)="projectService.setCurrentProject(project.id)"
+                [class]="'p-3 rounded-lg border cursor-pointer transition-all duration-200 ' + (projectService.currentProject()?.id === project.id ? 'bg-sky-900/50 border-sky-500' : 'bg-slate-900/50 border-slate-700 hover:border-slate-600')">
+                <p class="font-semibold text-white">{{ project.name }}</p>
+                <p class="text-slate-400 text-xs mt-1">{{ project.contents.length }} item(s)</p>
+                @if (project.tags.length > 0) {
+                  <div class="flex gap-1 mt-2 flex-wrap">
+                    @for (tag of project.tags; track tag) {
+                      <span class="px-2 py-0.5 bg-sky-600/30 text-sky-300 text-xs rounded">{{ tag }}</span>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          } @else {
+            <p class="text-slate-500 text-sm text-center py-4">No projects yet. Create one to get started!</p>
+          }
+        </div>
+      </div>
+    </div>
+  }
+  
+  <!-- Batch Generation Panel -->
+  @if (showBatchPanel()) {
+    <div class="fixed inset-y-0 right-0 w-96 bg-slate-800 border-l-2 border-sky-500/50 shadow-2xl z-40 overflow-y-auto animate-slide-in-right">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-sky-400">BATCH GENERATION</h2>
+          <button (click)="toggleBatchPanel()" class="text-slate-400 hover:text-white transition-colors">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Batch Configuration -->
+        <div class="mb-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+          <h3 class="text-lg font-semibold text-sky-400 mb-4">Batch Configuration</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label for="batch-type" class="block text-slate-300 mb-2 text-sm font-semibold">Content Type</label>
+              <div class="relative">
+                <select 
+                  id="batch-type" 
+                  [value]="batchContentType()" 
+                  (change)="updateBatchContentType($event)"
+                  class="w-full p-2 pr-10 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:outline-none text-slate-200 text-sm appearance-none">
+                  <option value="character">Character Concepts</option>
+                  <option value="plot">Plot Outlines</option>
+                  <option value="style">Visual Styles</option>
+                  <option value="intel">Intel Briefings</option>
+                  <option value="concept-art">Concept Art</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                  <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <label for="batch-inputs" class="block text-slate-300 mb-2 text-sm font-semibold">
+                Prompts (one per line)
+              </label>
+              <textarea 
+                id="batch-inputs" 
+                [value]="batchInputs()" 
+                (input)="updateBatchInputs($event)"
+                rows="10"
+                class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:outline-none text-slate-200 text-sm font-mono"
+                placeholder="A time-traveling hero
+A psychic villain
+A tech genius sidekick"
+              ></textarea>
+              <p class="text-xs text-slate-500 mt-1">
+                Enter one prompt per line. Each will be processed separately.
+              </p>
+            </div>
+            
+            <button 
+              (click)="startBatchGeneration()"
+              [disabled]="isLoading() || !batchInputs()"
+              class="w-full py-3 px-6 bg-green-600 hover:bg-green-500 text-white rounded-md transition-all duration-200 font-semibold disabled:bg-slate-600 disabled:cursor-not-allowed">
+              @if (isLoading()) {
+                <svg class="animate-spin inline-block -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                PROCESSING...
+              } @else {
+                START BATCH GENERATION
+              }
+            </button>
+          </div>
+        </div>
+        
+        <!-- Active Batch Jobs -->
+        <div class="space-y-3">
+          <h3 class="text-lg font-semibold text-sky-400">Active Jobs</h3>
+          @if (batchService.jobs().length > 0) {
+            @for (job of batchService.jobs(); track job.id) {
+              <div class="p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-white font-semibold text-sm capitalize">{{ job.type }}</span>
+                  <span [class]="'text-xs font-bold px-2 py-1 rounded ' + 
+                    (job.status === 'completed' ? 'bg-green-600/30 text-green-300' : 
+                     job.status === 'failed' ? 'bg-red-600/30 text-red-300' : 
+                     job.status === 'processing' ? 'bg-yellow-600/30 text-yellow-300' : 
+                     'bg-slate-600/30 text-slate-300')">
+                    {{ job.status }}
+                  </span>
+                </div>
+                <div class="w-full bg-slate-700 rounded-full h-2 mb-2">
+                  <div [style.width.%]="job.progress" class="bg-sky-500 h-2 rounded-full transition-all duration-300"></div>
+                </div>
+                <p class="text-slate-400 text-xs">{{ job.inputs.length }} items - {{ job.progress }}% complete</p>
+              </div>
+            }
+          } @else {
+            <p class="text-slate-500 text-sm text-center py-4">No active jobs</p>
+          }
+        </div>
+      </div>
+    </div>
+  }
 </div>
 <style>
   @keyframes fade-in {
@@ -538,5 +875,19 @@
 
   .animate-pulse-slow {
     animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+    }
+
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out forwards;
   }
 </style>
