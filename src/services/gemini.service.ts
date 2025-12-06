@@ -4,9 +4,10 @@
  * plot outlines, visual styles, intelligence briefings, images, and videos.
  */
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { GoogleGenAI, GenerateContentResponse, Type } from '@google/genai';
 import type { RawCharacterConcept, RawPlotOutline, RawVisualStyle, RawCharacterIntel } from '../models/marvel-concept.model.js';
+import { ConfigService } from './config.service.js';
 
 /**
  * Service for generating Marvel-themed content using Google's Gemini AI.
@@ -34,6 +35,9 @@ import type { RawCharacterConcept, RawPlotOutline, RawVisualStyle, RawCharacterI
 export class GeminiService {
   /** Google Gemini AI client instance */
   private ai: GoogleGenAI;
+
+  /** Configuration service */
+  private configService = inject(ConfigService);
 
   /**
    * Initializes the Gemini AI service.
@@ -293,6 +297,9 @@ export class GeminiService {
   async generateVideoShot(prompt: string, onProgress: (message: string) => void): Promise<Blob> {
     const fullPrompt = `Generate a short, cinematic, high-definition video shot suitable for a Marvel movie or series. The prompt is: "${prompt}". The shot should be dynamic and visually impressive.`;
     
+    // Get video configuration
+    const videoConfig = this.configService.getVideoConfig();
+    
     // FIX: Removed 'VideosOperation' type as it's not exported. Type is inferred.
     let operation = await this.ai.models.generateVideos({
       model: 'veo-2.0-generate-001',
@@ -302,8 +309,8 @@ export class GeminiService {
       }
     });
 
-    const maxChecks = 30; // 5 minutes timeout (30 checks * 10 seconds)
-    const pollInterval = 10000; // 10 seconds
+    const maxChecks = videoConfig.maxStatusChecks;
+    const pollInterval = videoConfig.pollingInterval;
     const progressMessages = [
       "Contacting Stark Industries for satellite uplink...",
       "Assembling the Avengers... of render nodes...",
@@ -323,7 +330,8 @@ export class GeminiService {
     }
 
     if (!operation.done) {
-      throw new Error('Video generation timed out after 5 minutes.');
+      const timeoutMinutes = Math.floor(videoConfig.timeout / 60000);
+      throw new Error(`Video generation timed out after ${timeoutMinutes} minutes.`);
     }
     
     const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;

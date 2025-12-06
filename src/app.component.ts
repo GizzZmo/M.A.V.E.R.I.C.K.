@@ -16,7 +16,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, signal
 import { CommonModule } from '@angular/common';
 import { GeminiService } from './services/gemini.service.js';
 import type { GeneratedConcept, CharacterConcept, PlotOutline, VisualStyle, CharacterIntel, VideoShot } from './models/marvel-concept.model.js';
-import { marvelHeroes, marvelVillains, marvelThemes } from './data/marvel-data.js';
+import { marvelHeroes, marvelVillains, marvelThemes, artStyles } from './data/marvel-data.js';
 
 /**
  * Enumeration of available application tabs.
@@ -104,7 +104,7 @@ export class AppComponent implements OnDestroy {
   panelOptions = [2, 3, 4];
   
   /** Available art styles for comic strip generation */
-  comicStripStyles = ['Classic Comic', 'Manga', 'Noir', 'Gritty 90s', 'Sci-Fi Comic', 'Fantasy Comic', 'Superhero Comic'];
+  comicStripStyles = artStyles;
 
   // === Form Input Signals ===
   
