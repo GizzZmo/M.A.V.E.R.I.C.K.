@@ -197,6 +197,13 @@ export class AppComponent implements OnDestroy {
     }
     return false;
   });
+  
+  /**
+   * Computed signal that determines if there is content to save.
+   */
+  hasContentToSave = computed(() => {
+    return !!(this.generatedContent() || this.generatedImageUrls() || this.generatedVideoUrl());
+  });
 
   /**
    * Component cleanup lifecycle hook.
@@ -674,8 +681,9 @@ export class AppComponent implements OnDestroy {
       this.isLoading.set(true);
       this.error.set(null);
       
-      const tags = this.projectTags() 
-        ? this.projectTags().split(',').map(t => t.trim()).filter(t => t)
+      const projectTagsValue = this.projectTags();
+      const tags = projectTagsValue 
+        ? projectTagsValue.split(',').map(t => t.trim()).filter(t => t)
         : [];
       
       await this.projectService.createProject(
@@ -824,7 +832,10 @@ export class AppComponent implements OnDestroy {
    * @param {Event} event - The change event
    */
   updateBatchContentType(event: Event) {
-    this.batchContentType.set((event.target as HTMLSelectElement).value as any);
+    const value = (event.target as HTMLSelectElement).value;
+    if (value === 'character' || value === 'plot' || value === 'style' || value === 'intel' || value === 'concept-art') {
+      this.batchContentType.set(value);
+    }
   }
   
   /**
