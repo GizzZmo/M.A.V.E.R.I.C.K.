@@ -1,19 +1,57 @@
+/**
+ * @fileoverview Main application component for M.A.V.E.R.I.C.K. (Marvel AI-Vision Engine for Rapid Interactive Content Kreation).
+ * This component provides a comprehensive pre-production blueprint generator for Marvel-themed content.
+ * 
+ * Features:
+ * - Character concept generation with backstories and abilities
+ * - Episode plot outline creation
+ * - Visual style guide generation
+ * - Character intelligence briefings (SHIELD-style)
+ * - Concept art image generation
+ * - Multi-panel comic strip creation
+ * - Cinematic video shot generation
+ */
+
 import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, signal, WritableSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GeminiService } from './services/gemini.service.js';
 import type { GeneratedConcept, CharacterConcept, PlotOutline, VisualStyle, CharacterIntel, VideoShot } from './models/marvel-concept.model.js';
 import { marvelHeroes, marvelVillains, marvelThemes } from './data/marvel-data.js';
 
+/**
+ * Enumeration of available application tabs.
+ * Each tab corresponds to a different content generation mode.
+ */
 export enum AppTab {
+  /** Character concept generation */
   Character = 'character',
+  /** Plot outline generation */
   Plot = 'plot',
+  /** Visual style guide generation */
   Style = 'style',
+  /** Character intelligence briefing */
   Intel = 'intel',
+  /** Concept art generation */
   ConceptArt = 'concept-art',
+  /** Comic strip generation */
   ComicStrip = 'comic-strip',
+  /** Video shot generation */
   VideoShot = 'video-shot'
 }
 
+/**
+ * Main application component for the Marvel Pre-Production Blueprint generator.
+ * 
+ * This component orchestrates the entire user interface and manages the state
+ * for all generation modes. It provides a tabbed interface where users can
+ * generate different types of Marvel-themed content using Google's Gemini AI.
+ * 
+ * @example
+ * Usage in HTML:
+ * ```html
+ * <app-root></app-root>
+ * ```
+ */
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -22,43 +60,94 @@ export enum AppTab {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent implements OnDestroy {
+  /** Injected Gemini AI service for content generation */
   public geminiService = inject(GeminiService);
 
-  // Expose enum to template
+  /** Expose AppTab enum to template */
   AppTab = AppTab;
-
-  // FIX: Removed API key input signal as it's no longer needed.
   
+  // === State Management Signals ===
+  
+  /** Currently active tab in the UI */
   activeTab: WritableSignal<AppTab> = signal(AppTab.Character);
+  
+  /** Loading state indicator */
   isLoading = signal(false);
+  
+  /** Loading message for long-running operations (e.g., video generation) */
   loadingMessage = signal<string | null>(null);
+  
+  /** Error message from failed generation attempts */
   error = signal<string | null>(null);
+  
+  /** Generated text content (character, plot, style, or intel) */
   generatedContent = signal<GeneratedConcept | null>(null);
+  
+  /** Generated image URLs for concept art and comic strips */
   generatedImageUrls = signal<string[] | null>(null);
+  
+  /** Generated video URL (as object URL from Blob) */
   generatedVideoUrl = signal<string | null>(null);
 
-  // Data for dropdowns
+  // === UI Data Sources ===
+  
+  /** List of Marvel heroes for plot generation dropdown */
   heroes = marvelHeroes;
+  
+  /** List of Marvel villains for plot generation dropdown */
   villains = marvelVillains;
+  
+  /** List of narrative themes for plot generation dropdown */
   themes = marvelThemes;
+  
+  /** Available panel count options for comic strips */
   panelOptions = [2, 3, 4];
+  
+  /** Available art styles for comic strip generation */
   comicStripStyles = ['Classic Comic', 'Manga', 'Noir', 'Gritty 90s', 'Sci-Fi Comic', 'Fantasy Comic', 'Superhero Comic'];
 
-  // Form inputs
+  // === Form Input Signals ===
+  
+  /** User input for character concept generation */
   characterInput = signal('A tech-based hero from a futuristic Wakandan outpost who can manipulate sound waves.');
+  
+  /** Selected hero for plot generation */
   plotHeroInput = signal('');
+  
+  /** Selected villain for plot generation */
   plotVillainInput = signal('');
+  
+  /** Selected theme for plot generation */
   plotThemeInput = signal('');
+  
+  /** User input for visual style guide generation */
   styleInput = signal('A blend of classic Jack Kirby cosmic energy with modern, fluid anime action sequences.');
+  
+  /** Character name for intelligence briefing */
   intelInput = signal('Doctor Doom');
+  
+  /** Description for concept art generation */
   conceptArtInput = signal('A dynamic action shot of a new hero, soaring over a neon-lit futuristic city at night, energy crackling around them.');
+  
+  /** Story description for comic strip generation */
   comicStripInput = signal('Spider-Man trying to buy groceries, but he forgot his wallet and the cashier is unimpressed.');
+  
+  /** Number of panels for comic strip */
   comicStripPanels = signal(2);
+  
+  /** Selected art style for comic strip */
   comicStripStyle = signal(this.comicStripStyles[0]);
+  
+  /** Description for video shot generation */
   videoShotInput = signal('Cinematic shot of Captain America throwing his shield in slow motion through a swarm of Ultron bots.');
 
+  /** Tracks the last video URL created to ensure proper cleanup */
   private lastVideoUrl: string | null = null;
 
+  /**
+   * Computed signal that determines if the current form is invalid.
+   * Currently only validates the plot generation form.
+   */
   isFormInvalid = computed(() => {
     const tab = this.activeTab();
     if (tab === AppTab.Plot) {
@@ -67,10 +156,19 @@ export class AppComponent implements OnDestroy {
     return false;
   });
 
+  /**
+   * Component cleanup lifecycle hook.
+   * Ensures video URLs are properly revoked to prevent memory leaks.
+   */
   ngOnDestroy() {
     this.revokeLastVideoUrl();
   }
 
+  /**
+   * Revokes the last created video object URL to free memory.
+   * Called during cleanup and when generating new videos.
+   * @private
+   */
   private revokeLastVideoUrl() {
     if (this.lastVideoUrl) {
       URL.revokeObjectURL(this.lastVideoUrl);
@@ -78,6 +176,12 @@ export class AppComponent implements OnDestroy {
     }
   }
 
+  /**
+   * Sets the active tab and resets all generation state.
+   * Clears any previously generated content, images, or videos.
+   * 
+   * @param {AppTab} tab - The tab to activate
+   */
   setActiveTab(tab: AppTab) {
     this.activeTab.set(tab);
     this.generatedContent.set(null);
@@ -87,6 +191,12 @@ export class AppComponent implements OnDestroy {
     this.error.set(null);
   }
 
+  /**
+   * Returns CSS classes for tab styling based on active state.
+   * 
+   * @param {AppTab} tab - The tab to get classes for
+   * @returns {string} CSS class string for the tab
+   */
   getTabClasses(tab: AppTab): string {
     const baseClasses = 'px-4 py-2 -mb-px text-sm font-semibold border-b-2 transition-colors duration-200';
     if (this.activeTab() === tab) {
@@ -95,6 +205,15 @@ export class AppComponent implements OnDestroy {
     return `${baseClasses} text-slate-400 border-transparent hover:text-sky-300`;
   }
 
+  /**
+   * Main generation method that orchestrates content creation.
+   * Routes to the appropriate generation method based on the active tab.
+   * 
+   * Handles loading states, error management, and result storage.
+   * For video generation, provides progress updates via loading messages.
+   * 
+   * @async
+   */
   async generate() {
     this.isLoading.set(true);
     this.error.set(null);
@@ -147,6 +266,10 @@ export class AppComponent implements OnDestroy {
     }
   }
   
+  /**
+   * Saves generated text content (character, plot, style, or intel) to a file.
+   * Formats the content appropriately based on the concept type and triggers a download.
+   */
   saveTextOutput(): void {
     const concept = this.generatedContent();
     if (!concept) return;
@@ -190,6 +313,13 @@ export class AppComponent implements OnDestroy {
     }
   }
 
+  /**
+   * Downloads text content as a file.
+   * 
+   * @param {string} content - The text content to download
+   * @param {string} fileName - The filename for the download
+   * @private
+   */
   private _downloadTextFile(content: string, fileName: string): void {
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -203,21 +333,44 @@ export class AppComponent implements OnDestroy {
     URL.revokeObjectURL(url);
   }
 
+  /**
+   * Saves a generated concept art image to a file.
+   * 
+   * @param {string} url - The image data URL
+   */
   saveConceptArt(url: string): void {
     if (!url) return;
     this._downloadImageFile(url, 'concept-art.jpeg');
   }
 
+  /**
+   * Saves a comic strip panel to a file.
+   * 
+   * @param {string} url - The image data URL
+   * @param {number} index - The panel index (0-based)
+   */
   saveComicPanel(url: string, index: number): void {
     if (!url) return;
     this._downloadImageFile(url, `comic-panel-${index + 1}.jpeg`);
   }
 
+  /**
+   * Saves a generated video shot to a file.
+   * 
+   * @param {string} url - The video object URL
+   */
   saveVideoShot(url: string): void {
     if (!url) return;
     this._downloadImageFile(url, 'video-shot.mp4');
   }
 
+  /**
+   * Downloads an image or video file.
+   * 
+   * @param {string} url - The file URL (data URL or object URL)
+   * @param {string} fileName - The filename for the download
+   * @private
+   */
   private _downloadImageFile(url: string, fileName: string): void {
     const link = document.createElement('a');
     link.href = url;
@@ -228,70 +381,142 @@ export class AppComponent implements OnDestroy {
     document.body.removeChild(link);
   }
 
-  // Type guard functions for template
+  // === Type Guard Functions ===
+  // These functions enable type-safe handling of different concept types in the template
+
+  /**
+   * Type guard to check if a concept is a CharacterConcept.
+   * @param {GeneratedConcept | null} concept - The concept to check
+   * @returns {boolean} True if the concept is a CharacterConcept
+   */
   isCharacter(concept: GeneratedConcept | null): concept is CharacterConcept {
     return concept?.type === 'character';
   }
 
+  /**
+   * Type guard to check if a concept is a PlotOutline.
+   * @param {GeneratedConcept | null} concept - The concept to check
+   * @returns {boolean} True if the concept is a PlotOutline
+   */
   isPlot(concept: GeneratedConcept | null): concept is PlotOutline {
     return concept?.type === 'plot';
   }
 
+  /**
+   * Type guard to check if a concept is a VisualStyle.
+   * @param {GeneratedConcept | null} concept - The concept to check
+   * @returns {boolean} True if the concept is a VisualStyle
+   */
   isStyle(concept: GeneratedConcept | null): concept is VisualStyle {
     return concept?.type === 'style';
   }
 
+  /**
+   * Type guard to check if a concept is a CharacterIntel.
+   * @param {GeneratedConcept | null} concept - The concept to check
+   * @returns {boolean} True if the concept is a CharacterIntel
+   */
   isIntel(concept: GeneratedConcept | null): concept is CharacterIntel {
     return concept?.type === 'intel';
   }
 
+  /**
+   * Type guard to check if a concept is a VideoShot.
+   * @param {GeneratedConcept | null} concept - The concept to check
+   * @returns {boolean} True if the concept is a VideoShot
+   */
   isVideo(concept: GeneratedConcept | null): concept is VideoShot {
     return concept?.type === 'video';
   }
 
+  // === Event Handlers for Form Inputs ===
+  // These methods update signal values from DOM events
+
+  /**
+   * Updates the character input signal from textarea change.
+   * @param {Event} event - The change event
+   */
   updateCharacterInput(event: Event) {
     this.characterInput.set((event.target as HTMLTextAreaElement).value);
   }
 
+  /**
+   * Updates the plot hero selection.
+   * @param {Event} event - The change event
+   */
   updatePlotHeroInput(event: Event) {
     this.plotHeroInput.set((event.target as HTMLSelectElement).value);
   }
 
+  /**
+   * Updates the plot villain selection.
+   * @param {Event} event - The change event
+   */
   updatePlotVillainInput(event: Event) {
     this.plotVillainInput.set((event.target as HTMLSelectElement).value);
   }
 
+  /**
+   * Updates the plot theme selection.
+   * @param {Event} event - The change event
+   */
   updatePlotThemeInput(event: Event) {
     this.plotThemeInput.set((event.target as HTMLSelectElement).value);
   }
 
+  /**
+   * Updates the visual style input.
+   * @param {Event} event - The change event
+   */
   updateStyleInput(event: Event) {
     this.styleInput.set((event.target as HTMLTextAreaElement).value);
   }
   
+  /**
+   * Updates the character intelligence briefing input.
+   * @param {Event} event - The change event
+   */
   updateIntelInput(event: Event) {
     this.intelInput.set((event.target as HTMLInputElement).value);
   }
   
+  /**
+   * Updates the concept art description input.
+   * @param {Event} event - The change event
+   */
   updateConceptArtInput(event: Event) {
     this.conceptArtInput.set((event.target as HTMLTextAreaElement).value);
   }
 
+  /**
+   * Updates the comic strip story input.
+   * @param {Event} event - The change event
+   */
   updateComicStripInput(event: Event) {
     this.comicStripInput.set((event.target as HTMLTextAreaElement).value);
   }
 
+  /**
+   * Updates the comic strip panel count.
+   * @param {Event} event - The change event
+   */
   updateComicStripPanels(event: Event) {
     this.comicStripPanels.set(Number((event.target as HTMLSelectElement).value));
   }
 
+  /**
+   * Updates the comic strip art style.
+   * @param {Event} event - The change event
+   */
   updateComicStripStyle(event: Event) {
     this.comicStripStyle.set((event.target as HTMLSelectElement).value);
   }
 
+  /**
+   * Updates the video shot description input.
+   * @param {Event} event - The change event
+   */
   updateVideoShotInput(event: Event) {
     this.videoShotInput.set((event.target as HTMLTextAreaElement).value);
   }
-  
-  // FIX: Removed methods for API key modal.
 }
