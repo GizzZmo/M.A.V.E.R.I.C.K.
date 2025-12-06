@@ -306,6 +306,6 @@ export class ShareService {
    * @private
    */
   private generateId(): string {
-    return `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `share_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 }

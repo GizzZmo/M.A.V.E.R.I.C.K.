@@ -455,6 +455,6 @@ export class CustomCharacterService {
    * @private
    */
   private generateId(): string {
-    return `char_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `char_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 }

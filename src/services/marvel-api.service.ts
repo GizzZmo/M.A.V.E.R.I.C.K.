@@ -1,6 +1,11 @@
 /**
  * @fileoverview Marvel API integration service for M.A.V.E.R.I.C.K.
  * Provides access to official Marvel character data via the Marvel API.
+ * 
+ * Note: This service uses demo keys by default. To use the real Marvel API:
+ * 1. Get API keys from https://developer.marvel.com/
+ * 2. Store them securely (ideally on a backend server)
+ * 3. Update the getAuthParams() method to use your keys
  */
 
 import { Injectable, signal } from '@angular/core';
@@ -244,23 +249,31 @@ export class MarvelApiService {
    * @returns {boolean} True if API credentials are available
    */
   isConfigured(): boolean {
-    // Check if API keys are available in environment
-    return !!(process.env.MARVEL_API_PUBLIC_KEY && process.env.MARVEL_API_PRIVATE_KEY);
+    // In a real implementation, check if proper API keys are configured
+    // For now, returns false to indicate demo mode
+    return false;
   }
 
   /**
    * Gets authentication parameters for Marvel API requests.
    * Generates the required apikey, ts (timestamp), and hash parameters.
    * 
+   * Note: This implementation uses demo values. In production:
+   * 1. Store API keys securely on your backend server
+   * 2. Make API calls through your backend to protect private key
+   * 3. Backend should generate the hash and make the Marvel API call
+   * 
    * @returns {object} Authentication parameters
    * @private
    */
   private getAuthParams(): Record<string, string> {
-    // In a production environment, the hash should be generated server-side
-    // to protect the private key. This is a simplified implementation.
+    // IMPORTANT: In production, this should be handled by your backend server
+    // to protect your private key. Never expose your Marvel API private key
+    // in client-side code.
     
-    const publicKey = process.env.MARVEL_API_PUBLIC_KEY || 'demo_public_key';
-    const privateKey = process.env.MARVEL_API_PRIVATE_KEY || 'demo_private_key';
+    // Demo keys (replace with your own in a backend service)
+    const publicKey = 'demo_public_key';
+    const privateKey = 'demo_private_key';
     const ts = Date.now().toString();
 
     // Generate MD5 hash: ts + privateKey + publicKey

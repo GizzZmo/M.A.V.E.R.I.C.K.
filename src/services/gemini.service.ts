@@ -4,7 +4,7 @@
  * plot outlines, visual styles, intelligence briefings, images, and videos.
  */
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { GoogleGenAI, GenerateContentResponse, Type } from '@google/genai';
 import type { RawCharacterConcept, RawPlotOutline, RawVisualStyle, RawCharacterIntel } from '../models/marvel-concept.model.js';
 import { ConfigService } from './config.service.js';
@@ -37,7 +37,7 @@ export class GeminiService {
   private ai: GoogleGenAI;
 
   /** Configuration service */
-  private configService: ConfigService;
+  private configService = inject(ConfigService);
 
   /**
    * Initializes the Gemini AI service.
@@ -51,7 +51,6 @@ export class GeminiService {
       throw new Error('API_KEY environment variable not set. Please configure it before running the application.');
     }
     this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    this.configService = new ConfigService();
   }
 
   /**

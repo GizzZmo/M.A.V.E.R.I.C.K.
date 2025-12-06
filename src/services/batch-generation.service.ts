@@ -306,6 +306,6 @@ export class BatchGenerationService {
    * @private
    */
   private generateId(): string {
-    return `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `batch_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 }
