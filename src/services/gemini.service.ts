@@ -6,7 +6,7 @@
 
 import { Injectable, inject } from '@angular/core';
 import { GoogleGenAI, GenerateContentResponse, Type } from '@google/genai';
-import type { RawCharacterConcept, RawPlotOutline, RawVisualStyle, RawCharacterIntel } from '../models/marvel-concept.model.js';
+import type { RawCharacterConcept, RawPlotOutline, RawVisualStyle, RawCharacterIntel, VideoChunk } from '../models/marvel-concept.model.js';
 import { ConfigService } from './config.service.js';
 
 /**
@@ -351,6 +351,106 @@ export class GeminiService {
     }
 
     return response.blob();
+  }
+
+  /**
+   * Generates a longer video sequence by splitting the description into chunks
+   * and generating each chunk independently, with per-chunk progress callbacks.
+   *
+   * This enables sequences longer than the single-shot limit by breaking the
+   * narrative into coherent segments (e.g. act 1, act 2, act 3) that can be
+   * edited together in post-production.
+   *
+   * @param {string}   fullPrompt      - Full description of the sequence
+   * @param {number}   chunkCount      - Number of segments to generate (2–6)
+   * @param {function} onChunkProgress - Callback with (chunkIndex, total, message)
+   * @returns {Promise<VideoChunk[]>}    Array of completed chunks (with blobs/URLs)
+   *
+   * @example
+   * ```typescript
+   * const chunks = await geminiService.generateVideoSequence(
+   *   "Thor fighting the Destroyer then flying to Asgard",
+   *   3,
+   *   (i, total, msg) => console.log(`Chunk ${i + 1}/${total}: ${msg}`)
+   * );
+   * ```
+   */
+  async generateVideoSequence(
+    fullPrompt: string,
+    chunkCount: number,
+    onChunkProgress: (chunkIndex: number, total: number, message: string) => void
+  ): Promise<VideoChunk[]> {
+    const clampedCount = Math.max(2, Math.min(6, chunkCount));
+
+    // Ask Gemini to split the narrative into coherent sub-prompts
+    const splitSchema = {
+      type: Type.OBJECT,
+      properties: {
+        segments: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: 'Ordered list of short, self-contained cinematic shot descriptions.',
+        },
+      },
+      required: ['segments'],
+    };
+
+    const splitPrompt =
+      `Split the following cinematic sequence description into exactly ${clampedCount} ` +
+      `chronological, self-contained shot descriptions that together tell the full story. ` +
+      `Each description should be 1-2 sentences and work as a standalone video prompt. ` +
+      `Sequence: "${fullPrompt}"`;
+
+    const { segments } = await this.generateJSON<{ segments: string[] }>(
+      splitPrompt,
+      splitSchema
+    );
+
+    // Initialise chunk objects
+    const chunks: VideoChunk[] = segments.slice(0, clampedCount).map(
+      (prompt, index) => ({
+        index,
+        total: clampedCount,
+        prompt,
+        blob: null,
+        url: null,
+        status: 'pending' as const,
+      })
+    );
+
+    // Generate each chunk sequentially to avoid rate-limit issues
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      chunk.status = 'generating';
+      onChunkProgress(i, chunks.length, `Generating segment ${i + 1} of ${chunks.length}…`);
+
+      try {
+        const blob = await this.generateVideoShot(
+          chunk.prompt,
+          (message: string) => onChunkProgress(i, chunks.length, message)
+        );
+        chunk.blob = blob;
+        chunk.url = URL.createObjectURL(blob);
+        chunk.status = 'done';
+        onChunkProgress(
+          i,
+          chunks.length,
+          `Segment ${i + 1} of ${chunks.length} complete.`
+        );
+      } catch (error: unknown) {
+        chunk.status = 'error';
+        chunk.error =
+          error instanceof Error ? error.message : 'Unknown error';
+        onChunkProgress(
+          i,
+          chunks.length,
+          `Segment ${i + 1} failed: ${chunk.error}`
+        );
+        // Continue with remaining chunks rather than aborting the whole sequence
+      }
+    }
+
+    return chunks;
   }
 
   /**

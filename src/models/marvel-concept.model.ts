@@ -154,3 +154,126 @@ export interface RawCharacterIntel {
   /** Known weaknesses */
   weaknesses: string[];
 }
+
+// ─── Team & Collaboration Models ─────────────────────────────────────────────
+
+/**
+ * Roles available within a team. Determines what actions a member can perform.
+ */
+export type TeamRole = 'owner' | 'editor' | 'viewer';
+
+/**
+ * Represents a single member of a team.
+ */
+export interface TeamMember {
+  /** User ID of the member */
+  userId: string;
+  /** Display name of the member */
+  name: string;
+  /** Email address of the member */
+  email: string;
+  /** Role assigned to this member within the team */
+  role: TeamRole;
+  /** ISO timestamp when the member joined */
+  joinedAt: string;
+}
+
+/**
+ * Represents a team that can own and collaborate on projects.
+ */
+export interface Team {
+  /** Unique identifier for the team */
+  id: string;
+  /** Display name for the team */
+  name: string;
+  /** Optional description of the team's purpose */
+  description: string;
+  /** User ID of the team owner */
+  ownerId: string;
+  /** List of all team members (including owner) */
+  members: TeamMember[];
+  /** IDs of projects owned by this team */
+  projectIds: string[];
+  /** ISO timestamp of creation */
+  createdAt: string;
+  /** ISO timestamp of last update */
+  updatedAt: string;
+}
+
+/**
+ * Represents a user's live presence in a collaborative session.
+ */
+export interface PresenceInfo {
+  /** User ID */
+  userId: string;
+  /** Display name */
+  name: string;
+  /** The tab/generation mode the user is currently working in */
+  activeTab: string;
+  /** ISO timestamp of the last heartbeat */
+  lastSeen: string;
+  /** Optional colour used for cursor/avatar highlighting */
+  color: string;
+}
+
+/**
+ * Message types used by the real-time collaboration channel.
+ */
+export type CollaborationMessageType =
+  | 'presence_join'
+  | 'presence_leave'
+  | 'presence_heartbeat'
+  | 'content_update'
+  | 'tab_change';
+
+/**
+ * A message broadcast over the collaboration channel.
+ */
+export interface CollaborationMessage {
+  /** Type of the message */
+  type: CollaborationMessageType;
+  /** Sender's user ID */
+  senderId: string;
+  /** Sender's display name */
+  senderName: string;
+  /** ISO timestamp */
+  timestamp: string;
+  /** Optional payload specific to the message type */
+  payload?: Record<string, unknown>;
+}
+
+/**
+ * Represents a cloud storage sync record for a piece of content.
+ */
+export interface CloudSyncRecord {
+  /** Local item ID */
+  localId: string;
+  /** Remote/cloud ID (null if not yet synced) */
+  remoteId: string | null;
+  /** ISO timestamp of the last successful cloud sync */
+  lastSynced: string | null;
+  /** Current sync status */
+  status: 'synced' | 'pending' | 'error' | 'local_only';
+  /** Optional error message */
+  errorMessage?: string;
+}
+
+/**
+ * Represents a chunk of a longer video sequence.
+ */
+export interface VideoChunk {
+  /** Zero-based chunk index */
+  index: number;
+  /** Total number of chunks in the sequence */
+  total: number;
+  /** Prompt used for this specific chunk */
+  prompt: string;
+  /** Generated video Blob for this chunk (null until generated) */
+  blob: Blob | null;
+  /** Object URL for playback (null until blob is available) */
+  url: string | null;
+  /** Status of this chunk */
+  status: 'pending' | 'generating' | 'done' | 'error';
+  /** Error message if status is 'error' */
+  error?: string;
+}
