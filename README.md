@@ -40,6 +40,9 @@ Create character concepts, episode plots, visual styles, intelligence briefings,
 - 🔗 **Content Sharing**: Create shareable links for generated content
 - 🦸 **Marvel API Integration**: Access official Marvel character data
 - 🎭 **Custom Characters**: Build and manage your own character databases
+- 🤝 **Real-Time Collaboration**: Live user presence and cross-tab content synchronization
+- 👥 **Team Management**: Create teams, manage members, and set role-based permissions
+- ☁️ **Cloud Storage**: Abstract cloud storage layer ready for backend integration
 
 ---
 
@@ -152,6 +155,30 @@ Produce short video shots featuring:
 - **FBX Metadata**: 3D pipeline compatibility
 - **CSV**: Tabular data for spreadsheets
 - **Markdown**: Documentation-ready format
+
+#### 🤝 Real-Time Collaboration
+Collaborate with others using the BroadcastChannel API:
+- Live user presence indicators (who is online and on which tab)
+- Cross-tab content synchronization within the same browser
+- Periodic heartbeats to detect offline collaborators
+- Color-coded collaborator identities
+- Extensible for multi-device collaboration via WebSocket or Firebase
+
+#### 👥 Team Management
+Organize work with structured teams and role-based access control:
+- Create and delete teams
+- Invite and remove team members
+- Assign roles: **owner**, **editor**, or **viewer**
+- Role-based permission checks (`canEdit`, `canManage`)
+- Associate projects with teams
+- Persistent team data with localStorage
+
+#### ☁️ Cloud Storage
+Abstract cloud storage layer with a promise-based API:
+- Save and load arbitrary JSON documents with stable IDs
+- Sync status tracking per item (`synced`, `pending`, `error`, `local_only`)
+- Global sync-in-progress indicator
+- Currently backed by localStorage; designed for easy replacement with Firebase, AWS S3, or a custom REST API
 
 ---
 
@@ -292,6 +319,17 @@ Weaknesses:
 ┌─────────────────────────────────────┐
 │        Service Layer                │
 │  GeminiService (AI Integration)     │
+│  AuthService (Authentication)       │
+│  ProjectService (Organization)      │
+│  BatchGenerationService (Queue)     │
+│  ShareService (Sharing)             │
+│  MarvelApiService (Marvel Data)     │
+│  CustomCharacterService (DB)        │
+│  ExportService (Multi-format)       │
+│  ConfigService (Settings)           │
+│  CollaborationService (Presence)    │
+│  TeamService (Roles & Permissions)  │
+│  CloudStorageService (Persistence)  │
 │  Dependency Injection (Angular)     │
 └─────────────────────────────────────┘
                   │
@@ -312,7 +350,18 @@ M.A.V.E.R.I.C.K./
 │   ├── app.component.ts          # Main component with UI logic
 │   ├── app.component.html        # Application template
 │   ├── services/
-│   │   └── gemini.service.ts     # AI integration service
+│   │   ├── gemini.service.ts     # AI integration service
+│   │   ├── auth.service.ts       # User authentication & session management
+│   │   ├── project.service.ts    # Project & content organization
+│   │   ├── batch-generation.service.ts  # Batch AI generation
+│   │   ├── share.service.ts      # Shareable link generation
+│   │   ├── marvel-api.service.ts # Official Marvel API integration
+│   │   ├── custom-character.service.ts  # Custom character databases
+│   │   ├── export.service.ts     # Multi-format content export
+│   │   ├── config.service.ts     # Centralized configuration
+│   │   ├── collaboration.service.ts     # Real-time collaboration & presence
+│   │   ├── team.service.ts       # Team management & role-based permissions
+│   │   └── cloud-storage.service.ts     # Cloud storage abstraction layer
 │   ├── models/
 │   │   └── marvel-concept.model.ts  # TypeScript interfaces
 │   └── data/
@@ -320,8 +369,10 @@ M.A.V.E.R.I.C.K./
 ├── index.tsx                     # Application entry point
 ├── angular.json                  # Angular configuration
 ├── tsconfig.json                 # TypeScript configuration
-├── package.json                  # Dependencies and scripts
-└── README.md                     # This file
+├── CONTRIBUTING.md               # Contribution guidelines
+├── SERVICES_GUIDE.md             # Services implementation guide
+├── README.md                     # This file
+└── package.json                  # Dependencies and scripts
 ```
 
 ### Key Components
@@ -516,6 +567,58 @@ Manages application configuration.
 - `getBatchConfig()` - Get batch processing settings
 - `resetToDefaults()` - Reset all settings
 
+#### CollaborationService
+
+Manages real-time collaboration using the BroadcastChannel API.
+
+**Key Methods:**
+- `startSession(activeTab)` - Open a collaboration session and announce presence
+- `endSession()` - Notify peers and close the session
+- `broadcastTabChange(activeTab)` - Notify peers of the active tab change
+- `broadcastContentUpdate(contentType, summary)` - Broadcast a content update to collaborators
+
+**Reactive Signals:**
+- `sessionActive` - Whether a session is currently active
+- `peers` - Live list of online collaborators
+- `peerCount` - Number of online collaborators
+
+#### TeamService
+
+Manages teams and role-based access control.
+
+**Key Methods:**
+- `createTeam(name, description)` - Create a new team owned by the current user
+- `updateTeam(teamId, name, description)` - Update team name/description
+- `deleteTeam(teamId)` - Delete a team (owner only)
+- `addMember(teamId, member)` - Add a member to a team
+- `removeMember(teamId, userId)` - Remove a member from a team
+- `updateMemberRole(teamId, userId, role)` - Change a member's role
+- `addProject(teamId, projectId)` - Associate a project with a team
+- `getRole(teamId)` - Get the current user's role in a team
+- `canEdit(teamId)` - Check if the current user can edit team content
+- `canManage(teamId)` - Check if the current user can manage team settings
+
+**Reactive Signals:**
+- `allTeams` - All teams as a flat array
+- `myTeams` - Teams the current user belongs to
+- `currentTeam` - The currently selected team
+
+#### CloudStorageService
+
+Provides a cloud storage abstraction layer backed by localStorage.
+
+**Key Methods:**
+- `save(localId, data)` - Save a document to cloud storage
+- `load(localId)` - Load a document from cloud storage
+- `delete(localId)` - Delete a document and its sync record
+- `getRecord(localId)` - Get the sync record for an item
+- `markLocalOnly(localId)` - Mark an item as local-only without I/O
+
+**Reactive Signals:**
+- `isSyncing` - True while any save/delete operation is in progress
+- `allRecords` - All tracked sync records
+- `pendingCount` - Count of items not yet synced
+
 ---
 
 ## 🎯 Development
@@ -587,19 +690,17 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - [x] **Add more art styles and themes** - Expanded to 30 art styles and 20 narrative themes with visual style presets
 - [x] **Support for longer video generation** - Configurable timeouts up to 10 minutes (600 seconds)
 - [x] **Export to industry-standard formats** - Export to PDF, JSON, XML, FBX metadata, CSV, and Markdown
-
-### 🚧 In Progress
-
-- [ ] **Implement collaborative features** - Real-time collaboration with user presence indicators
+- [x] **Implement collaborative features** - Real-time collaboration with BroadcastChannel-based user presence and cross-tab sync
+- [x] **Add cloud storage integration** - Abstract cloud storage layer with sync status tracking, ready for backend integration
+- [x] **Team management and permissions** - Create teams, manage members, and enforce role-based permissions (owner/editor/viewer)
 
 ### 🔮 Future Enhancements
 
-- [ ] Add UI components for all new features (authentication, project management, batch generation)
-- [ ] Implement real-time collaborative editing
-- [ ] Add cloud storage integration
+- [ ] Add UI components for all new features (authentication, project management, batch generation, collaboration, teams)
+- [ ] Extend real-time collaboration to multiple devices using WebSocket or Firebase
 - [ ] Support for video chunking and longer sequences
 - [ ] Advanced 3D export formats
-- [ ] Team management and permissions
+- [ ] Backend integration to replace localStorage with a real cloud API
 
 ---
 

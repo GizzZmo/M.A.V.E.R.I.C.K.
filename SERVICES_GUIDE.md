@@ -4,7 +4,7 @@ This document provides an overview of the newly implemented services and how to 
 
 ## Overview
 
-The M.A.V.E.R.I.C.K. roadmap implementation adds 8 new services that provide comprehensive backend functionality for user authentication, project management, batch processing, sharing, data integration, and export capabilities.
+The M.A.V.E.R.I.C.K. roadmap implementation adds 12 services that provide comprehensive backend functionality for user authentication, project management, batch processing, sharing, data integration, export capabilities, real-time collaboration, team management, and cloud storage.
 
 ## Services Summary
 
@@ -382,7 +382,162 @@ configService.resetToDefaults();
 
 ---
 
-## Enhanced Data
+### 9. CollaborationService (`src/services/collaboration.service.ts`)
+
+**Purpose:** Real-time collaboration using the BroadcastChannel API
+
+**Key Features:**
+- User presence indicators (who is online and on which tab)
+- Cross-tab content synchronization within the same browser origin
+- Periodic heartbeats to detect offline collaborators
+- Color-coded collaborator identities (deterministic palette based on user ID)
+- Clean session teardown on component/service destroy
+- Designed for extension to multi-device collaboration (WebSocket / Firebase)
+
+**Usage Example:**
+```typescript
+import { inject } from '@angular/core';
+import { CollaborationService } from './services/collaboration.service';
+
+const collab = inject(CollaborationService);
+
+// Start a session on the 'character' tab
+collab.startSession('character');
+
+// Notify peers when the user switches tabs
+collab.broadcastTabChange('video-shot');
+
+// Notify peers of a content update
+collab.broadcastContentUpdate('character', 'Generated Sonic Sage');
+
+// Read reactive state
+const isActive = collab.sessionActive();   // boolean
+const peers = collab.peers();              // PresenceInfo[]
+const count = collab.peerCount();          // number
+
+// End the session
+collab.endSession();
+```
+
+**UI Integration Points:**
+- Collaborator avatar row in the header
+- Active tab indicators per collaborator
+- "Content updated by …" toast notifications
+- Online/offline status badges
+- Session start/stop toggle button
+
+---
+
+### 10. TeamService (`src/services/team.service.ts`)
+
+**Purpose:** Team creation, membership management, and role-based permission checks
+
+**Key Features:**
+- Create and delete teams
+- Invite and remove members
+- Update member roles (`owner`, `editor`, `viewer`)
+- Permission helpers (`canEdit`, `canManage`)
+- Associate projects with teams
+- Persistent storage via localStorage
+
+**Usage Example:**
+```typescript
+import { inject } from '@angular/core';
+import { TeamService } from './services/team.service';
+
+const teamService = inject(TeamService);
+
+// Create a team (current user becomes owner)
+const team = teamService.createTeam('Avengers Initiative', 'Core MCU team');
+
+// Add a member
+teamService.addMember(team.id, {
+  userId: 'user_2',
+  name: 'Natasha Romanoff',
+  email: 'nat@shield.gov',
+  role: 'editor',
+});
+
+// Update a member's role
+teamService.updateMemberRole(team.id, 'user_2', 'viewer');
+
+// Check permissions
+const canEdit = teamService.canEdit(team.id);    // true for owner/editor
+const canManage = teamService.canManage(team.id); // true for owner only
+
+// Associate a project
+teamService.addProject(team.id, 'project_abc');
+
+// Select the active team
+teamService.selectTeam(team.id);
+const current = teamService.currentTeam(); // Team | null
+
+// Remove a member
+teamService.removeMember(team.id, 'user_2');
+
+// Delete the team (owner only)
+teamService.deleteTeam(team.id);
+```
+
+**UI Integration Points:**
+- Team creation modal
+- Team member list with role badges
+- Role selector dropdown per member
+- "Invite member" form
+- Team switcher in the header/sidebar
+- Project sharing within a team
+
+---
+
+### 11. CloudStorageService (`src/services/cloud-storage.service.ts`)
+
+**Purpose:** Abstract cloud storage layer for saving and loading application data
+
+**Key Features:**
+- Save/load arbitrary JSON documents with a stable local ID
+- Sync status tracking per item (`synced`, `pending`, `error`, `local_only`)
+- List all tracked sync records
+- Delete remote records
+- Global sync-in-progress indicator
+- Currently backed by localStorage; replace `remoteWrite`/`remoteRead`/`remoteDelete` with real HTTP/SDK calls to switch backends
+
+**Usage Example:**
+```typescript
+import { inject } from '@angular/core';
+import { CloudStorageService } from './services/cloud-storage.service';
+
+const cloud = inject(CloudStorageService);
+
+// Save a document
+const remoteId = await cloud.save('project_abc', myProjectData);
+
+// Load a document
+const data = await cloud.load<MyProjectType>('project_abc');
+
+// Delete a document
+await cloud.delete('project_abc');
+
+// Check sync record
+const record = cloud.getRecord('project_abc');
+console.log(record?.status); // 'synced' | 'pending' | 'error' | 'local_only'
+
+// Mark as local-only (offline creation)
+cloud.markLocalOnly('project_xyz');
+
+// Reactive state
+const syncing = cloud.isSyncing();          // boolean
+const records = cloud.allRecords();         // CloudSyncRecord[]
+const pending = cloud.pendingCount();       // number
+```
+
+**UI Integration Points:**
+- Sync status indicator in the header (spinning icon while syncing)
+- Per-item sync badges (cloud icon / error icon)
+- "Sync now" / "Upload pending" button
+- Offline mode banner when items are `local_only`
+- Settings page: switch storage backend
+
+---
 
 ### Art Styles (30 total)
 
@@ -474,6 +629,27 @@ The `visualStylePresets` array includes:
 - [ ] Add debug mode toggle
 - [ ] Add config import/export
 
+### Collaboration
+- [ ] Add collaborator avatar row in the header
+- [ ] Add per-tab presence indicators
+- [ ] Add "Content updated by …" toast notifications
+- [ ] Add session start/stop toggle button
+- [ ] Extend to multi-device via WebSocket or Firebase
+
+### Teams
+- [ ] Add team creation modal
+- [ ] Add team member list with role badges
+- [ ] Add role selector dropdown per member
+- [ ] Add "Invite member" form
+- [ ] Add team switcher in header/sidebar
+
+### Cloud Storage
+- [ ] Add sync status indicator in the header
+- [ ] Add per-item sync badges (synced / pending / error)
+- [ ] Add "Upload pending" button for local-only items
+- [ ] Add offline mode banner
+- [ ] Replace localStorage backend with real cloud API
+
 ---
 
 ## Best Practices
@@ -489,12 +665,11 @@ The `visualStylePresets` array includes:
 
 ## Future Enhancements
 
-1. **Backend Integration:** Replace localStorage with real backend API
-2. **Real-time Collaboration:** Add WebSocket support for collaborative editing
-3. **Cloud Storage:** Integrate with cloud storage providers
-4. **Advanced Analytics:** Track usage patterns and optimize workflows
-5. **Team Features:** Add team management and permissions
-6. **Version Control:** Add versioning for projects and content
+1. **Backend Integration:** Replace localStorage with a real backend API (REST, Firebase, etc.)
+2. **Multi-Device Collaboration:** Extend CollaborationService with WebSocket or Firebase Realtime Database
+3. **Advanced Analytics:** Track usage patterns and optimize workflows
+4. **Version Control:** Add versioning for projects and content
+5. **Notifications:** Push notifications for collaboration and team events
 
 ---
 
