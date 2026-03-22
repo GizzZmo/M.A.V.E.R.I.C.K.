@@ -130,7 +130,18 @@ M.A.V.E.R.I.C.K./
 │   ├── app.component.ts          # Main component
 │   ├── app.component.html        # Main template
 │   ├── services/
-│   │   └── gemini.service.ts     # AI service
+│   │   ├── gemini.service.ts     # AI service
+│   │   ├── auth.service.ts       # Authentication
+│   │   ├── project.service.ts    # Project management
+│   │   ├── batch-generation.service.ts  # Batch processing
+│   │   ├── share.service.ts      # Content sharing
+│   │   ├── marvel-api.service.ts # Marvel API integration
+│   │   ├── custom-character.service.ts  # Custom character databases
+│   │   ├── export.service.ts     # Multi-format export
+│   │   ├── config.service.ts     # Configuration management
+│   │   ├── collaboration.service.ts     # Real-time collaboration
+│   │   ├── team.service.ts       # Team management & permissions
+│   │   └── cloud-storage.service.ts     # Cloud storage abstraction
 │   ├── models/
 │   │   └── marvel-concept.model.ts
 │   └── data/
@@ -139,6 +150,7 @@ M.A.V.E.R.I.C.K./
 │   └── workflows/                # CI/CD workflows
 ├── README.md
 ├── CONTRIBUTING.md               # This file
+├── SERVICES_GUIDE.md             # Services implementation guide
 └── package.json
 ```
 
