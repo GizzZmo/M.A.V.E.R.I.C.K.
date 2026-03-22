@@ -10,6 +10,11 @@
  * - Concept art image generation
  * - Multi-panel comic strip creation
  * - Cinematic video shot generation
+ * - Real-time collaboration with user presence indicators
+ * - Team management and role-based permissions
+ * - Cloud storage integration
+ * - Video chunking for longer sequences
+ * - Advanced 3D export formats (glTF, OBJ, USDA)
  */
 
 import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, signal, WritableSignal } from '@angular/core';
@@ -18,7 +23,11 @@ import { GeminiService } from './services/gemini.service.js';
 import { AuthService } from './services/auth.service.js';
 import { ProjectService } from './services/project.service.js';
 import { BatchGenerationService } from './services/batch-generation.service.js';
-import type { GeneratedConcept, CharacterConcept, PlotOutline, VisualStyle, CharacterIntel, VideoShot } from './models/marvel-concept.model.js';
+import { CollaborationService } from './services/collaboration.service.js';
+import { TeamService } from './services/team.service.js';
+import { CloudStorageService } from './services/cloud-storage.service.js';
+import { ExportService } from './services/export.service.js';
+import type { GeneratedConcept, CharacterConcept, PlotOutline, VisualStyle, CharacterIntel, VideoShot, VideoChunk } from './models/marvel-concept.model.js';
 import { marvelHeroes, marvelVillains, marvelThemes, artStyles } from './data/marvel-data.js';
 
 /**
@@ -75,9 +84,21 @@ export class AppComponent implements OnDestroy {
   /** Injected Batch Generation service for batch processing */
   public batchService = inject(BatchGenerationService);
 
+  /** Injected Collaboration service for real-time presence */
+  public collaborationService = inject(CollaborationService);
+
+  /** Injected Team service for team management */
+  public teamService = inject(TeamService);
+
+  /** Injected Cloud Storage service */
+  public cloudStorageService = inject(CloudStorageService);
+
+  /** Injected Export service for advanced export formats */
+  public exportService = inject(ExportService);
+
   /** Expose AppTab enum to template */
   AppTab = AppTab;
-  
+
   // === State Management Signals ===
   
   /** Currently active tab in the UI */
@@ -130,6 +151,43 @@ export class AppComponent implements OnDestroy {
   projectName = signal('');
   projectDescription = signal('');
   projectTags = signal('');
+
+  // === Collaboration & Team State Signals ===
+
+  /** Whether the team management panel is visible */
+  showTeamPanel = signal(false);
+
+  /** Name input for creating a new team */
+  teamName = signal('');
+
+  /** Description input for creating a new team */
+  teamDescription = signal('');
+
+  /** Email input for inviting a team member */
+  inviteMemberEmail = signal('');
+
+  /** Name input for inviting a team member */
+  inviteMemberName = signal('');
+
+  /** Role selection for the member being invited */
+  inviteMemberRole = signal<'editor' | 'viewer'>('editor');
+
+  /** Team management error message */
+  teamError = signal<string | null>(null);
+
+  /** Whether cloud-sync of the last content was requested */
+  cloudSyncRequested = signal(false);
+
+  // === Video Sequence State Signals ===
+
+  /** Generated video sequence chunks */
+  videoChunks = signal<VideoChunk[]>([]);
+
+  /** Number of chunks for video sequence generation */
+  videoChunkCount = signal(3);
+
+  /** Whether sequence (multi-chunk) mode is active for video generation */
+  videoSequenceMode = signal(false);
 
   // === UI Data Sources ===
   
@@ -207,10 +265,12 @@ export class AppComponent implements OnDestroy {
 
   /**
    * Component cleanup lifecycle hook.
-   * Ensures video URLs are properly revoked to prevent memory leaks.
+   * Ensures video URLs are properly revoked and the collaboration session is closed.
    */
   ngOnDestroy() {
     this.revokeLastVideoUrl();
+    this.revokeVideoChunkUrls();
+    this.collaborationService.endSession();
   }
 
   /**
@@ -226,9 +286,21 @@ export class AppComponent implements OnDestroy {
   }
 
   /**
+   * Revokes all object URLs created for video sequence chunks.
+   * @private
+   */
+  private revokeVideoChunkUrls() {
+    this.videoChunks().forEach(chunk => {
+      if (chunk.url) URL.revokeObjectURL(chunk.url);
+    });
+    this.videoChunks.set([]);
+  }
+
+  /**
    * Sets the active tab and resets all generation state.
    * Clears any previously generated content, images, or videos.
-   * 
+   * Broadcasts the tab change to collaboration peers.
+   *
    * @param {AppTab} tab - The tab to activate
    */
   setActiveTab(tab: AppTab) {
@@ -237,7 +309,9 @@ export class AppComponent implements OnDestroy {
     this.generatedImageUrls.set(null);
     this.generatedVideoUrl.set(null);
     this.revokeLastVideoUrl();
+    this.revokeVideoChunkUrls();
     this.error.set(null);
+    this.collaborationService.broadcastTabChange(tab);
   }
 
   /**
@@ -271,24 +345,30 @@ export class AppComponent implements OnDestroy {
     this.generatedVideoUrl.set(null);
     this.loadingMessage.set(null);
     this.revokeLastVideoUrl();
+    this.revokeVideoChunkUrls();
 
     try {
       const tab = this.activeTab();
       if (tab === AppTab.Character) {
         const response = await this.geminiService.generateCharacterConcept(this.characterInput());
         this.generatedContent.set({ ...response, type: 'character' });
+        this.collaborationService.broadcastContentUpdate('character', response.name);
       } else if (tab === AppTab.Plot) {
         const response = await this.geminiService.generatePlotOutline(this.plotHeroInput(), this.plotVillainInput(), this.plotThemeInput());
         this.generatedContent.set({ ...response, type: 'plot' });
+        this.collaborationService.broadcastContentUpdate('plot', `${this.plotHeroInput()} vs ${this.plotVillainInput()}`);
       } else if (tab === AppTab.Style) {
         const response = await this.geminiService.generateVisualStyle(this.styleInput());
         this.generatedContent.set({ ...response, type: 'style' });
+        this.collaborationService.broadcastContentUpdate('style', response.styleName);
       } else if (tab === AppTab.Intel) {
         const response = await this.geminiService.generateCharacterIntel(this.intelInput());
         this.generatedContent.set({ ...response, type: 'intel' });
+        this.collaborationService.broadcastContentUpdate('intel', response.characterName);
       } else if (tab === AppTab.ConceptArt) {
         const imageUrls = await this.geminiService.generateConceptArt(this.conceptArtInput());
         this.generatedImageUrls.set(imageUrls);
+        this.collaborationService.broadcastContentUpdate('concept-art', 'new concept art');
       } else if (tab === AppTab.ComicStrip) {
         const imageUrls = await this.geminiService.generateComicStrip(
           this.comicStripInput(),
@@ -296,16 +376,32 @@ export class AppComponent implements OnDestroy {
           this.comicStripStyle()
         );
         this.generatedImageUrls.set(imageUrls);
+        this.collaborationService.broadcastContentUpdate('comic-strip', 'new comic strip');
       } else if (tab === AppTab.VideoShot) {
-        this.loadingMessage.set('Initiating video generation...');
-        const videoBlob = await this.geminiService.generateVideoShot(
-          this.videoShotInput(),
-          (message: string) => this.loadingMessage.set(message)
-        );
-        const videoUrl = URL.createObjectURL(videoBlob);
-        this.generatedVideoUrl.set(videoUrl);
-        this.lastVideoUrl = videoUrl;
-        this.generatedContent.set({ type: 'video' });
+        if (this.videoSequenceMode()) {
+          // Multi-chunk video sequence generation
+          this.loadingMessage.set('Preparing video sequence...');
+          const chunks = await this.geminiService.generateVideoSequence(
+            this.videoShotInput(),
+            this.videoChunkCount(),
+            (chunkIndex, total, message) =>
+              this.loadingMessage.set(`[${chunkIndex + 1}/${total}] ${message}`)
+          );
+          this.videoChunks.set(chunks);
+          this.generatedContent.set({ type: 'video' });
+          this.collaborationService.broadcastContentUpdate('video-sequence', `${chunks.length}-part sequence`);
+        } else {
+          this.loadingMessage.set('Initiating video generation...');
+          const videoBlob = await this.geminiService.generateVideoShot(
+            this.videoShotInput(),
+            (message: string) => this.loadingMessage.set(message)
+          );
+          const videoUrl = URL.createObjectURL(videoBlob);
+          this.generatedVideoUrl.set(videoUrl);
+          this.lastVideoUrl = videoUrl;
+          this.generatedContent.set({ type: 'video' });
+          this.collaborationService.broadcastContentUpdate('video-shot', 'new video shot');
+        }
       }
     } catch (e: any) {
       this.error.set(e.message || 'An unknown error occurred.');
@@ -898,5 +994,226 @@ export class AppComponent implements OnDestroy {
     } finally {
       this.isLoading.set(false);
     }
+  }
+
+  // === Collaboration Methods ===
+
+  /**
+   * Starts a collaboration session so peers can see this user's presence.
+   * No-ops if not authenticated or a session is already active.
+   */
+  startCollaboration(): void {
+    this.collaborationService.startSession(this.activeTab());
+  }
+
+  /**
+   * Ends the active collaboration session.
+   */
+  stopCollaboration(): void {
+    this.collaborationService.endSession();
+  }
+
+  // === Team Management Methods ===
+
+  /**
+   * Toggles the team management panel.
+   */
+  toggleTeamPanel(): void {
+    this.showTeamPanel.update(v => !v);
+    this.teamError.set(null);
+  }
+
+  /**
+   * Creates a new team with the current form values.
+   */
+  createTeam(): void {
+    this.teamError.set(null);
+    if (!this.teamName().trim()) {
+      this.teamError.set('Team name is required.');
+      return;
+    }
+    try {
+      this.teamService.createTeam(this.teamName(), this.teamDescription());
+      this.teamName.set('');
+      this.teamDescription.set('');
+    } catch (err) {
+      this.teamError.set(err instanceof Error ? err.message : 'Failed to create team.');
+    }
+  }
+
+  /**
+   * Deletes a team by ID.
+   * @param {string} teamId - ID of the team to delete
+   */
+  deleteTeam(teamId: string): void {
+    this.teamError.set(null);
+    try {
+      this.teamService.deleteTeam(teamId);
+    } catch (err) {
+      this.teamError.set(err instanceof Error ? err.message : 'Failed to delete team.');
+    }
+  }
+
+  /**
+   * Selects (activates) a team by ID.
+   * @param {string | null} teamId - Team ID or null to deselect
+   */
+  selectTeam(teamId: string | null): void {
+    this.teamService.selectTeam(teamId);
+  }
+
+  /**
+   * Invites a member to the currently selected team.
+   */
+  inviteTeamMember(): void {
+    this.teamError.set(null);
+    const team = this.teamService.currentTeam();
+    if (!team) {
+      this.teamError.set('No team selected.');
+      return;
+    }
+    if (!this.inviteMemberEmail().trim() || !this.inviteMemberName().trim()) {
+      this.teamError.set('Member name and email are required.');
+      return;
+    }
+    try {
+      this.teamService.addMember(team.id, {
+        userId: `user_${Date.now()}`,
+        name: this.inviteMemberName(),
+        email: this.inviteMemberEmail(),
+        role: this.inviteMemberRole(),
+      });
+      this.inviteMemberEmail.set('');
+      this.inviteMemberName.set('');
+    } catch (err) {
+      this.teamError.set(err instanceof Error ? err.message : 'Failed to invite member.');
+    }
+  }
+
+  /**
+   * Removes a member from a team.
+   * @param {string} teamId  - Team ID
+   * @param {string} userId  - User ID to remove
+   */
+  removeTeamMember(teamId: string, userId: string): void {
+    this.teamError.set(null);
+    try {
+      this.teamService.removeMember(teamId, userId);
+    } catch (err) {
+      this.teamError.set(err instanceof Error ? err.message : 'Failed to remove member.');
+    }
+  }
+
+  // === Cloud Storage Methods ===
+
+  /**
+   * Saves the currently generated content to cloud storage.
+   * Requires generated content to be present.
+   */
+  async saveToCloud(): Promise<void> {
+    const content = this.generatedContent();
+    const images = this.generatedImageUrls();
+    if (!content && !images) return;
+
+    this.cloudSyncRequested.set(true);
+    const localId = `content_${Date.now()}`;
+    const payload = content
+      ? { type: 'concept', data: content }
+      : { type: 'images', data: images };
+
+    try {
+      await this.cloudStorageService.save(localId, payload);
+    } catch (err) {
+      this.error.set(err instanceof Error ? err.message : 'Cloud save failed.');
+    } finally {
+      this.cloudSyncRequested.set(false);
+    }
+  }
+
+  // === Video Sequence Methods ===
+
+  /**
+   * Toggles between single-shot and multi-chunk sequence mode for video generation.
+   */
+  toggleVideoSequenceMode(): void {
+    this.videoSequenceMode.update(v => !v);
+    this.revokeVideoChunkUrls();
+  }
+
+  /**
+   * Updates the target chunk count from an input event.
+   * @param {Event} event - Input change event
+   */
+  updateVideoChunkCount(event: Event): void {
+    const value = parseInt((event.target as HTMLInputElement).value, 10);
+    if (!isNaN(value)) {
+      this.videoChunkCount.set(Math.max(2, Math.min(6, value)));
+    }
+  }
+
+  /**
+   * Saves a specific video sequence chunk to a file.
+   * @param {VideoChunk} chunk - The chunk to save
+   */
+  saveVideoChunk(chunk: VideoChunk): void {
+    if (!chunk.url) return;
+    this._downloadImageFile(chunk.url, `sequence-segment-${chunk.index + 1}.mp4`);
+  }
+
+  // === Input update helpers for new signals ===
+
+  /** Updates teamName signal from input event */
+  updateTeamName(event: Event): void {
+    this.teamName.set((event.target as HTMLInputElement).value);
+  }
+
+  /** Updates teamDescription signal from input event */
+  updateTeamDescription(event: Event): void {
+    this.teamDescription.set((event.target as HTMLInputElement).value);
+  }
+
+  /** Updates inviteMemberName signal from input event */
+  updateInviteMemberName(event: Event): void {
+    this.inviteMemberName.set((event.target as HTMLInputElement).value);
+  }
+
+  /** Updates inviteMemberEmail signal from input event */
+  updateInviteMemberEmail(event: Event): void {
+    this.inviteMemberEmail.set((event.target as HTMLInputElement).value);
+  }
+
+  /** Updates inviteMemberRole signal from select event */
+  updateInviteMemberRole(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value as 'editor' | 'viewer';
+    this.inviteMemberRole.set(value);
+  }
+
+  // === Advanced 3D Export Methods ===
+
+  /**
+   * Exports the current character concept as a glTF 2.0 metadata file.
+   */
+  exportGLTF(): void {
+    const concept = this.generatedContent();
+    if (!this.isCharacter(concept)) return;
+    this.exportService.exportToGLTF(concept, `${concept.name.replace(/\s+/g, '_')}.gltf`);
+  }
+
+  /**
+   * Exports the current character concept as OBJ + MTL files.
+   */
+  exportOBJ(): void {
+    const concept = this.generatedContent();
+    if (!this.isCharacter(concept)) return;
+    this.exportService.exportToOBJ(concept, concept.name.replace(/\s+/g, '_'));
+  }
+
+  /**
+   * Exports the current visual style as a USD ASCII file.
+   */
+  exportUSDA(): void {
+    const concept = this.generatedContent();
+    if (!this.isStyle(concept)) return;
+    this.exportService.exportToUSDA(concept, `${concept.styleName.replace(/\s+/g, '_')}.usda`);
   }
 }

@@ -7,6 +7,24 @@ import { Injectable } from '@angular/core';
 import type { GeneratedConcept, CharacterConcept, PlotOutline, VisualStyle, CharacterIntel } from '../models/marvel-concept.model.js';
 
 /**
+ * Minimal glTF 2.0 root document type used for 3-D metadata export.
+ * Only the fields written by this service are declared.
+ */
+interface GltfDocument {
+  asset: { version: string; generator: string; copyright?: string };
+  extensionsUsed?: string[];
+  extras?: Record<string, unknown>;
+  scene?: number;
+  scenes?: Array<{ name: string; nodes: number[] }>;
+  nodes?: Array<{ name: string; extras?: Record<string, unknown> }>;
+  materials?: Array<{
+    name: string;
+    pbrMetallicRoughness?: Record<string, unknown>;
+    extras?: Record<string, unknown>;
+  }>;
+}
+
+/**
  * Service for exporting generated content to various formats.
  * 
  * This service provides:
@@ -123,6 +141,176 @@ export class ExportService {
   exportToMarkdown(content: GeneratedConcept, filename: string = 'maverick-export.md'): void {
     const markdown = this.convertToMarkdown(content);
     this.downloadFile(markdown, filename, 'text/markdown');
+  }
+
+  // ── Advanced 3-D export formats ──────────────────────────────────────────
+
+  /**
+   * Exports a character concept as a glTF 2.0 JSON metadata file.
+   *
+   * The exported file is a valid glTF document containing a single node whose
+   * `extras` field carries all character metadata (backstory, powers,
+   * weaknesses, visual description).  Artists can import this into DCC tools
+   * (Blender, Maya, etc.) and attach geometry later.
+   *
+   * @param {CharacterConcept} character - Character concept to export
+   * @param {string} filename - Output filename (should end with .gltf)
+   */
+  exportToGLTF(character: CharacterConcept, filename: string = 'character-metadata.gltf'): void {
+    const gltf: GltfDocument = {
+      asset: {
+        version: '2.0',
+        generator: 'M.A.V.E.R.I.C.K. v1.0',
+        copyright: `Marvel character: ${character.name}`,
+      },
+      extensionsUsed: ['MAVERICK_character_metadata'],
+      extras: {
+        maverick: {
+          characterName: character.name,
+          backstory: character.backstory,
+          powers: character.powers,
+          weaknesses: character.weaknesses,
+          visualDescription: character.visualDescription,
+          exportedAt: new Date().toISOString(),
+        },
+      },
+      scene: 0,
+      scenes: [{ name: character.name, nodes: [0] }],
+      nodes: [
+        {
+          name: character.name,
+          extras: {
+            powers: character.powers,
+            weaknesses: character.weaknesses,
+          },
+        },
+      ],
+      materials: [
+        {
+          name: `${character.name}_material`,
+          pbrMetallicRoughness: {
+            baseColorFactor: [1, 1, 1, 1],
+            metallicFactor: 0.0,
+            roughnessFactor: 0.5,
+          },
+          extras: {
+            visualDescription: character.visualDescription,
+          },
+        },
+      ],
+    };
+
+    this.downloadFile(
+      JSON.stringify(gltf, null, 2),
+      filename,
+      'model/gltf+json'
+    );
+  }
+
+  /**
+   * Exports a character concept as a Wavefront OBJ / MTL metadata pair.
+   *
+   * The OBJ file contains a comment block with all character metadata and a
+   * placeholder mesh (a single vertex at the origin) so the file is valid and
+   * can be imported into any DCC tool.  The accompanying MTL file encodes
+   * visual style information from the character's visual description.
+   *
+   * @param {CharacterConcept} character - Character concept to export
+   * @param {string} basename - Base filename without extension
+   */
+  exportToOBJ(
+    character: CharacterConcept,
+    basename: string = 'character-metadata'
+  ): void {
+    const mtlFilename = `${basename}.mtl`;
+
+    // ── OBJ content ──────────────────────────────────────────────────────
+    const objLines: string[] = [
+      `# M.A.V.E.R.I.C.K. Character Export`,
+      `# Character: ${character.name}`,
+      `# Exported: ${new Date().toISOString()}`,
+      `#`,
+      `# --- BACKSTORY ---`,
+      ...character.backstory
+        .split('\n')
+        .map(line => `# ${line}`),
+      `#`,
+      `# --- POWERS ---`,
+      ...character.powers.map(p => `# - ${p}`),
+      `#`,
+      `# --- WEAKNESSES ---`,
+      ...character.weaknesses.map(w => `# - ${w}`),
+      `#`,
+      `# --- VISUAL DESCRIPTION ---`,
+      ...character.visualDescription
+        .split('\n')
+        .map(line => `# ${line}`),
+      `#`,
+      `mtllib ${mtlFilename}`,
+      ``,
+      `o ${character.name.replace(/\s+/g, '_')}`,
+      `v 0.000000 0.000000 0.000000`,
+      `usemtl ${character.name.replace(/\s+/g, '_')}_mat`,
+    ];
+
+    // ── MTL content ──────────────────────────────────────────────────────
+    const mtlLines: string[] = [
+      `# M.A.V.E.R.I.C.K. Material Export`,
+      `# Character: ${character.name}`,
+      `#`,
+      `# Visual Description: ${character.visualDescription}`,
+      ``,
+      `newmtl ${character.name.replace(/\s+/g, '_')}_mat`,
+      `Ka 1.000 1.000 1.000`,
+      `Kd 0.800 0.800 0.800`,
+      `Ks 0.500 0.500 0.500`,
+      `Ns 96.078431`,
+      `Ni 1.000000`,
+      `d 1.000000`,
+      `illum 2`,
+    ];
+
+    this.downloadFile(objLines.join('\n'), `${basename}.obj`, 'model/obj');
+    this.downloadFile(mtlLines.join('\n'), mtlFilename, 'model/mtl');
+  }
+
+  /**
+   * Exports a visual style guide as a USD-compatible ASCII metadata file.
+   *
+   * Universal Scene Description (USD / USDA) is the interchange format used
+   * across Disney, Pixar, and major VFX pipelines.  This export writes a
+   * lightweight USDA "over" prim that carries colour-palette, aesthetic, and
+   * character-design metadata without requiring a geometry payload.
+   *
+   * @param {VisualStyle} style - Visual style guide to export
+   * @param {string} filename  - Output filename (should end with .usda)
+   */
+  exportToUSDA(style: VisualStyle, filename: string = 'visual-style.usda'): void {
+    const safeName = style.styleName.replace(/[^a-zA-Z0-9_]/g, '_');
+
+    const usda = [
+      `#usda 1.0`,
+      `(`,
+      `    defaultPrim = "${safeName}"`,
+      `    doc = """M.A.V.E.R.I.C.K. Visual Style Export`,
+      `    Style: ${style.styleName}`,
+      `    Exported: ${new Date().toISOString()}`,
+      `    """`,
+      `)`,
+      ``,
+      `over "${safeName}" (`,
+      `    kind = "assembly"`,
+      `)`,
+      `{`,
+      `    string maverick:styleName = "${this.escapeUSD(style.styleName)}"`,
+      `    string maverick:aesthetic = "${this.escapeUSD(style.aesthetic)}"`,
+      `    string maverick:characterDesign = "${this.escapeUSD(style.characterDesign)}"`,
+      `    string maverick:colorPalette = "${this.escapeUSD(style.colorPalette)}"`,
+      `    string maverick:backgroundStyle = "${this.escapeUSD(style.backgroundStyle)}"`,
+      `}`,
+    ].join('\n');
+
+    this.downloadFile(usda, filename, 'text/plain');
   }
 
   /**
@@ -418,6 +606,17 @@ export class ExportService {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&apos;');
+  }
+
+  /**
+   * Escapes backslashes and double-quotes for USD string literals.
+   *
+   * @param {string} str - String to escape
+   * @returns {string} Escaped string
+   * @private
+   */
+  private escapeUSD(str: string): string {
+    return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   }
 
   /**

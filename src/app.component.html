@@ -8,7 +8,62 @@
         </h1>
         <p class="text-sm text-slate-400">Marvel Animated Verse & Entity Resource for Ideation & Creative Kickstart</p>
       </div>
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3 flex-wrap">
+        <!-- Presence Indicators (online collaborators) -->
+        @if (collaborationService.sessionActive()) {
+          <div class="flex items-center gap-1" title="Active collaborators">
+            @for (peer of collaborationService.peers(); track peer.userId) {
+              <span class="relative inline-flex items-center justify-center w-8 h-8 rounded-full border-2 text-xs font-bold"
+                [style.border-color]="peer.color"
+                [style.background-color]="peer.color + '33'"
+                [style.color]="peer.color"
+                [title]="peer.name + ' — ' + peer.activeTab">
+                {{ peer.name.charAt(0).toUpperCase() }}
+                <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-400 border border-slate-800"></span>
+              </span>
+            }
+            <span class="text-xs text-green-400 font-semibold ml-1">
+              {{ collaborationService.peerCount() > 0 ? collaborationService.peerCount() + ' online' : 'You\'re alone' }}
+            </span>
+            <button (click)="stopCollaboration()" title="Stop collaboration"
+              class="ml-1 w-7 h-7 flex items-center justify-center rounded-full bg-slate-700 hover:bg-red-700 text-slate-400 hover:text-white transition-colors">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        } @else if (authService.isAuthenticated()) {
+          <button (click)="startCollaboration()" title="Start collaboration session"
+            class="px-3 py-1.5 bg-slate-700 hover:bg-green-700 text-slate-300 hover:text-white rounded-md transition-all duration-200 text-xs font-semibold flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+            COLLABORATE
+          </button>
+        }
+
+        <!-- Cloud Sync Status -->
+        @if (cloudStorageService.isSyncing()) {
+          <span class="flex items-center gap-1 text-xs text-sky-400">
+            <svg class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            SYNCING
+          </span>
+        } @else if (cloudStorageService.pendingCount() > 0) {
+          <span class="text-xs text-yellow-400" title="{{ cloudStorageService.pendingCount() }} item(s) pending sync">
+            ⚠ {{ cloudStorageService.pendingCount() }} UNSYNCED
+          </span>
+        }
+
+        <!-- Team Management Button -->
+        <button (click)="toggleTeamPanel()"
+          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md transition-all duration-200 font-semibold text-sm flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-1a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v1h-3zM4.75 14.094A5.973 5.973 0 004 17v1H1v-1a3 3 0 013.75-2.906z" />
+          </svg>
+          TEAMS
+        </button>
+
         <!-- Project Management Button -->
         <button (click)="toggleProjectPanel()" 
           class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-md transition-all duration-200 font-semibold text-sm flex items-center gap-2">
@@ -223,12 +278,35 @@
           </div>
           }
            @case (AppTab.VideoShot) {
-            <div class="flex flex-col h-full">
+            <div class="flex flex-col h-full gap-4">
               <label for="video-prompt" class="text-slate-300 mb-2 font-semibold">Video Shot Prompt</label>
               <textarea id="video-prompt" rows="5" [value]="videoShotInput()" (input)="updateVideoShotInput($event)"
                 aria-describedby="video-prompt-desc"
                 class="w-full p-3 bg-slate-900/70 border border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none transition-all duration-200 text-slate-200 placeholder-slate-500"></textarea>
-              <p id="video-prompt-desc" class="text-xs text-slate-500 mt-2">Describe a cinematic shot (e.g., "Iron Man landing dramatically in a three-point stance").</p>
+              <p id="video-prompt-desc" class="text-xs text-slate-500 -mt-2">Describe a cinematic shot (e.g., "Iron Man landing dramatically in a three-point stance").</p>
+
+              <!-- Video Sequence Mode Toggle -->
+              <div class="p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-slate-300 text-sm font-semibold flex items-center gap-2">
+                    <span>Sequence Mode</span>
+                    <span class="text-xs text-slate-500">(split into multiple chunks)</span>
+                  </label>
+                  <button (click)="toggleVideoSequenceMode()"
+                    [class]="'relative inline-flex h-6 w-11 items-center rounded-full transition-colors ' + (videoSequenceMode() ? 'bg-sky-500' : 'bg-slate-600')">
+                    <span [class]="'inline-block h-4 w-4 transform rounded-full bg-white transition-transform ' + (videoSequenceMode() ? 'translate-x-6' : 'translate-x-1')"></span>
+                  </button>
+                </div>
+                @if (videoSequenceMode()) {
+                  <div class="flex items-center gap-3 mt-2">
+                    <label for="chunk-count" class="text-xs text-slate-400">Segments:</label>
+                    <input id="chunk-count" type="number" min="2" max="6"
+                      [value]="videoChunkCount()" (input)="updateVideoChunkCount($event)"
+                      class="w-16 p-1 bg-slate-800 border border-slate-600 rounded text-slate-200 text-sm text-center" />
+                    <span class="text-xs text-slate-500">2–6 segments</span>
+                  </div>
+                }
+              </div>
             </div>
           }
           }
@@ -341,7 +419,7 @@
               </div>
             </div>
           </div>
-          <div class="mt-8 text-center">
+          <div class="mt-8 flex flex-wrap gap-3 justify-center">
             <button (click)="saveTextOutput()"
               class="inline-flex items-center justify-center px-6 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -351,9 +429,26 @@
               </svg>
               Save Blueprint
             </button>
+            <button (click)="exportGLTF()" title="Export as glTF 2.0 metadata"
+              class="inline-flex items-center justify-center px-4 py-2 font-semibold rounded-md transition-all duration-300 bg-amber-700 hover:bg-amber-600 text-white text-sm">
+              glTF
+            </button>
+            <button (click)="exportOBJ()" title="Export as OBJ + MTL"
+              class="inline-flex items-center justify-center px-4 py-2 font-semibold rounded-md transition-all duration-300 bg-amber-700 hover:bg-amber-600 text-white text-sm">
+              OBJ
+            </button>
+            @if (authService.isAuthenticated()) {
+              <button (click)="saveToCloud()" [disabled]="cloudStorageService.isSyncing()"
+                class="inline-flex items-center justify-center px-4 py-2 font-semibold rounded-md transition-all duration-300 bg-teal-700 hover:bg-teal-600 text-white text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                @if (cloudStorageService.isSyncing()) {
+                  <svg class="animate-spin h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                } @else {
+                  ☁
+                }
+                Cloud Save
+              </button>
+            }
           </div>
-        </div>
-        } @else if (isIntel(content)) {
         <div>
           <div class="animate-fade-in">
             <h3 class="text-2xl font-bold text-white mb-6">Intel Briefing: {{ content.characterName }}</h3>
@@ -464,7 +559,7 @@
               </div>
             </div>
           </div>
-          <div class="mt-8 text-center">
+          <div class="mt-8 flex flex-wrap gap-3 justify-center">
             <button (click)="saveTextOutput()"
               class="inline-flex items-center justify-center px-6 py-2 font-semibold rounded-md transition-all duration-300 bg-sky-600 hover:bg-sky-500 text-white">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -474,9 +569,11 @@
               </svg>
               Save Blueprint
             </button>
+            <button (click)="exportUSDA()" title="Export as USD ASCII for VFX pipelines"
+              class="inline-flex items-center justify-center px-4 py-2 font-semibold rounded-md transition-all duration-300 bg-amber-700 hover:bg-amber-600 text-white text-sm">
+              USDA
+            </button>
           </div>
-        </div>
-        } @else if (images && images.length > 0) {
         <div class="space-y-6 animate-fade-in">
           @if (activeTab() === AppTab.ConceptArt) {
           <h3 class="text-2xl font-bold text-white">Generated Concept Art</h3>
@@ -541,6 +638,51 @@
             </div>
           </div>
         </div>
+        } @else if (isVideo(content) && videoChunks().length > 0) {
+        <!-- Video Sequence Output -->
+        <div>
+          <h3 class="text-2xl font-bold text-white mb-1">Generated Video Sequence</h3>
+          <p class="text-slate-400 text-sm mb-4">{{ videoChunks().length }}-segment sequence</p>
+          <div class="space-y-4">
+            @for (chunk of videoChunks(); track chunk.index) {
+              <div class="bg-slate-900/50 rounded-lg border p-4"
+                [class.border-green-600]="chunk.status === 'done'"
+                [class.border-red-600]="chunk.status === 'error'"
+                [class.border-yellow-600]="chunk.status === 'generating'"
+                [class.border-slate-700]="chunk.status === 'pending'">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-sm font-bold text-slate-300">Segment {{ chunk.index + 1 }} / {{ chunk.total }}</span>
+                  <span class="text-xs px-2 py-0.5 rounded font-bold"
+                    [class.bg-green-700]="chunk.status === 'done'"
+                    [class.text-green-200]="chunk.status === 'done'"
+                    [class.bg-red-700]="chunk.status === 'error'"
+                    [class.text-red-200]="chunk.status === 'error'"
+                    [class.bg-yellow-700]="chunk.status === 'generating'"
+                    [class.text-yellow-200]="chunk.status === 'generating'"
+                    [class.bg-slate-600]="chunk.status === 'pending'"
+                    [class.text-slate-300]="chunk.status === 'pending'">
+                    {{ chunk.status }}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500 mb-3 italic">{{ chunk.prompt }}</p>
+                @if (chunk.status === 'done' && chunk.url) {
+                  <video [src]="chunk.url" controls class="w-full rounded border border-sky-500/30 mb-2"></video>
+                  <button (click)="saveVideoChunk(chunk)"
+                    class="text-sm px-4 py-1.5 bg-sky-700 hover:bg-sky-600 text-white rounded transition-colors">
+                    Save Segment
+                  </button>
+                } @else if (chunk.status === 'error') {
+                  <p class="text-red-400 text-xs">{{ chunk.error }}</p>
+                } @else if (chunk.status === 'generating') {
+                  <div class="flex items-center gap-2 text-yellow-400 text-xs">
+                    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                    Generating…
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
         }
         }
       </div>
@@ -548,6 +690,138 @@
     </main>
   </div>
   
+  <!-- ── Team Management Panel ────────────────────────────────────────── -->
+  @if (showTeamPanel()) {
+    <div class="fixed inset-y-0 right-0 w-full max-w-lg bg-slate-800 border-l border-indigo-500/40 shadow-2xl z-40 animate-slide-in-right overflow-y-auto">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-indigo-400">TEAM MANAGEMENT</h2>
+          <button (click)="toggleTeamPanel()" class="text-slate-400 hover:text-white transition-colors">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        @if (teamError()) {
+          <div class="mb-4 p-3 bg-red-900/40 border border-red-500 rounded text-red-300 text-sm">{{ teamError() }}</div>
+        }
+
+        @if (!authService.isAuthenticated()) {
+          <p class="text-slate-400 text-sm">Please log in to manage teams.</p>
+        } @else {
+
+          <!-- Create Team -->
+          <div class="mb-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+            <h3 class="text-lg font-semibold text-indigo-400 mb-3">Create New Team</h3>
+            <div class="space-y-3">
+              <input type="text" placeholder="Team name" [value]="teamName()" (input)="updateTeamName($event)"
+                class="w-full p-2 bg-slate-900/70 border border-slate-600 rounded text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              <input type="text" placeholder="Description (optional)" [value]="teamDescription()" (input)="updateTeamDescription($event)"
+                class="w-full p-2 bg-slate-900/70 border border-slate-600 rounded text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              <button (click)="createTeam()"
+                class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-semibold text-sm transition-colors">
+                + Create Team
+              </button>
+            </div>
+          </div>
+
+          <!-- Teams List -->
+          <div class="space-y-4">
+            <h3 class="text-lg font-semibold text-indigo-400">Your Teams</h3>
+            @if (teamService.myTeams().length === 0) {
+              <p class="text-slate-500 text-sm text-center py-4">No teams yet. Create one above.</p>
+            }
+            @for (team of teamService.myTeams(); track team.id) {
+              <div class="bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden">
+                <div class="p-4 flex justify-between items-start">
+                  <div>
+                    <h4 class="font-bold text-white">{{ team.name }}</h4>
+                    @if (team.description) {
+                      <p class="text-xs text-slate-400 mt-0.5">{{ team.description }}</p>
+                    }
+                    <p class="text-xs text-indigo-400 mt-1">{{ team.members.length }} member(s) · Role: {{ teamService.getRole(team.id) }}</p>
+                  </div>
+                  <div class="flex gap-2">
+                    <button (click)="selectTeam(teamService.currentTeam()?.id === team.id ? null : team.id)"
+                      class="text-xs px-2 py-1 rounded transition-colors"
+                      [class.bg-indigo-600]="teamService.currentTeam()?.id === team.id"
+                      [class.text-white]="teamService.currentTeam()?.id === team.id"
+                      [class.bg-slate-700]="teamService.currentTeam()?.id !== team.id"
+                      [class.text-slate-300]="teamService.currentTeam()?.id !== team.id">
+                      {{ teamService.currentTeam()?.id === team.id ? 'Active' : 'Select' }}
+                    </button>
+                    @if (teamService.canManage(team.id)) {
+                      <button (click)="deleteTeam(team.id)"
+                        class="text-xs px-2 py-1 bg-red-800 hover:bg-red-700 text-white rounded transition-colors">
+                        Delete
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Members List -->
+                <div class="border-t border-slate-700 px-4 py-3 space-y-2">
+                  @for (member of team.members; track member.userId) {
+                    <div class="flex justify-between items-center text-sm">
+                      <div>
+                        <span class="text-slate-200 font-medium">{{ member.name }}</span>
+                        <span class="text-slate-500 ml-2 text-xs">{{ member.email }}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="text-xs px-2 py-0.5 rounded font-bold"
+                          [class.bg-indigo-700]="member.role === 'owner'"
+                          [class.text-indigo-200]="member.role === 'owner'"
+                          [class.bg-sky-800]="member.role === 'editor'"
+                          [class.text-sky-200]="member.role === 'editor'"
+                          [class.bg-slate-700]="member.role === 'viewer'"
+                          [class.text-slate-300]="member.role === 'viewer'">
+                          {{ member.role }}
+                        </span>
+                        @if (teamService.canManage(team.id) && member.userId !== authService.currentUser()?.id) {
+                          <button (click)="removeTeamMember(team.id, member.userId)"
+                            class="text-xs text-red-400 hover:text-red-300 transition-colors">
+                            Remove
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                <!-- Invite Member (only for selected + managed team) -->
+                @if (teamService.currentTeam()?.id === team.id && teamService.canManage(team.id)) {
+                  <div class="border-t border-slate-700 p-4 bg-slate-900/30">
+                    <p class="text-xs font-semibold text-slate-400 mb-2">Invite Member</p>
+                    <div class="space-y-2">
+                      <input type="text" placeholder="Name" [value]="inviteMemberName()" (input)="updateInviteMemberName($event)"
+                        class="w-full p-2 bg-slate-900/70 border border-slate-600 rounded text-slate-200 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
+                      <input type="email" placeholder="Email" [value]="inviteMemberEmail()" (input)="updateInviteMemberEmail($event)"
+                        class="w-full p-2 bg-slate-900/70 border border-slate-600 rounded text-slate-200 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
+                      <div class="flex gap-2">
+                        <div class="relative flex-1">
+                          <select [value]="inviteMemberRole()" (change)="updateInviteMemberRole($event)"
+                            class="w-full p-2 bg-slate-900/70 border border-slate-600 rounded text-slate-200 text-xs appearance-none focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                            <option value="editor">Editor</option>
+                            <option value="viewer">Viewer</option>
+                          </select>
+                        </div>
+                        <button (click)="inviteTeamMember()"
+                          class="px-3 py-2 bg-indigo-700 hover:bg-indigo-600 text-white rounded text-xs font-semibold transition-colors">
+                          Invite
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
   <!-- Authentication Modal -->
   @if (showAuthModal()) {
     <div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
